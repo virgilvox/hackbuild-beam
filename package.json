@@ -23,9 +23,11 @@
     "typecheck": "tsc -b --pretty && tsc -p packages/beam-core/tsconfig.typecheck.json && tsc -p packages/beam-sources/tsconfig.typecheck.json && tsc -p packages/beam-link/tsconfig.typecheck.json",
     "check": "pnpm lint && pnpm check:style && pnpm check:sketches && pnpm typecheck && pnpm check:invariants && pnpm test",
     "check:invariants": "node tools/check-invariants.mjs",
-    "dev": "node tools/dev-server.mjs",
+    "dev": "pnpm --filter ./apps/studio dev",
     "check:style": "node tools/check-house-style.mjs",
-    "check:sketches": "node tools/check-sketches.mjs"
+    "check:sketches": "node tools/check-sketches.mjs",
+    "app": "pnpm --filter ./apps/studio dev",
+    "bench": "node tools/dev-server.mjs"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",

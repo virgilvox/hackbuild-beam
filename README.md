@@ -21,23 +21,39 @@ earlier PRDs preserved under `originals/`.
 
 ## Status
 
-Scaffold. The engine's geometry, calibration and protocol spec are implemented and
-tested; the planner, simulator, SDK and app are scheduled. See the milestone table
-in the PRD.
+Both machines work end to end in the app: content, planning, simulation, the wire,
+and a 3D view that draws the real printed parts. Neither has been driven against
+real hardware yet, so every accuracy figure in the docs comes from the profile's
+actuator model rather than from a wall. `docs/handoff.md` says what to measure
+first and what would falsify it.
+
+Hosted, and it is the same self contained file you would download:
+<https://virgilvox.github.io/hackbuild-beam/>. Web Serial and Web Bluetooth only
+exist in a secure context, so the hosted copy drives hardware exactly as a local
+file does.
 
 ```
 pnpm install
-pnpm check          # lint, house style, typecheck, invariant citations, tests
-pnpm dev            # http://localhost:8173
+pnpm check          # lint, house style, sketch layout, typecheck, invariants, tests
+pnpm dev            # the app, http://localhost:5173
+pnpm bench          # the engine bench and both original tools, http://localhost:8173
 ```
 
-`pnpm dev` serves the **engine bench**: the merged engine running in a browser, checked
-live against the two shipped implementations, with the geometry lattice, a calibration
-solver you can paste real captured corners into, and the wire format byte for byte. It
-is a bench, not the app, and nothing in it drives a beam.
+`pnpm bench` serves the **engine bench**: the merged engine running in a browser,
+checked live against the two shipped implementations, with the geometry lattice, a
+calibration solver you can paste captured corners into, and the wire format byte
+for byte. It is a bench, not the app, and nothing in it drives a beam. The same
+server hosts both original single file tools at their own URLs.
 
-The same server hosts both original tools at their own URLs. `localhost` is a secure
-context, so Web Serial and Web Bluetooth work there against real hardware.
+### Start here
+
+| | |
+| --- | --- |
+| `docs/handoff.md` | state, what was learned, what is open, what to measure on real hardware |
+| `docs/audit-app.md` | every app defect found, with measurements |
+| `docs/audit-firmware.md` | both firmwares read against what the app assumes of them |
+| `docs/invariants.md` | behaviours paid for on the bench, each with a named test |
+| `PRD.md` | the governing document, superseding both original PRDs |
 
 ## Layout
 
