@@ -28,8 +28,9 @@ of their names. They are this rig's, and three independent things say so:
 * `galvobrack` is 17.58 mm tall and `MOUNT.brackBore` is 8.79, exactly half of it.
   The bore runs down the middle of the collar, which is only true of this part.
 
-The stepper rig has no model in this tree at all. `galvo` in the filename is a
-naming habit, not a lineage.
+`galvo` in those filenames is a naming habit, not a lineage. The stepper rig's own
+parts are under `../detent-28byj/`, exported from its sim page rather than from a
+`.scad`, and they are a completely separate set.
 
 ## The numbers that place them
 

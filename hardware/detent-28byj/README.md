@@ -5,30 +5,56 @@ a mirror, plus a 405nm diode.
 
 ## Parts
 
-**There are no models for this rig in the tree.**
+| File | What it is | Volume |
+| --- | --- | --- |
+| `chassis.stl` | The one piece body. Holds both steppers, the module and the mirrors | 31.0 cm3 |
+| `cage.stl` | The snap cage that closes over it. No screws | 36.8 cm3 |
+| `hood.stl` | The lid | 17.8 cm3 |
+| `hub.stl` | Mirror carrier, pressed on a motor shaft. **Print two** | 2.6 cm3 |
 
-The two `galvo*.stl` files that used to sit in this folder are the servo pan/tilt
-head's, and they now live under `../washer-servo/` where the rest of that rig's parts
-already were. Their names misled an earlier pass: they ship inside the servo app's own
-folder, `laser-rig.html` embeds and assembles all three by name, and `galvobrack` is
-17.58 mm tall against a `brackBore` of 8.79, exactly half, so its bore runs down the
-middle of the collar. See `../washer-servo/README.md`.
+Bought, not printed: two 28BYJ-48 steppers on ULN2003 boards, two 20 x 3 mm front
+surface mirrors, a 405 nm module, four M4 screws.
 
-`detent-plot.html` never had a mesh. It carries no three.js and no embedded geometry:
-its rig view is a hand drawn projection of about thirty quads, which is what the app
-still falls back to for this machine.
+### Where these came from
 
-So the 3D view draws this rig from its geometry rather than from its hardware: two
-mirrors on posts, at 45 degrees plus half the beam angle, a real `sepMm` apart. That
-is dimensionally honest about the optics and says nothing about the housing.
+They were exported from `originals/detent-sim/detent.html`, which carries every
+part as an indexed mesh quantised to sixteen bits over its own bounding box. There
+was no `.scad` and no STL in the tree before this; the geometry had been here since
+the sim page arrived and was only ever being drawn, never written out.
 
-To get the real parts in, drop the STLs here and add them to the `PARTS` table in
-`tools/pack-mesh.mjs`; the packer, the decoder and the renderer are all generic. What
-does not exist yet is the placement, which is the part that has to be measured rather
-than guessed, exactly as `apps/studio/src/canvas/rig-assembly.ts` does for the servo
-head.
+`node tools/export-stl.mjs` regenerates them. It is not a one time paste: the sim
+page stays the source, so a part cannot be edited here and silently disagree with
+what the app draws.
 
-BOM and the SPINDLE shield notes land here at M0 per the PRD.
+Quantisation costs nothing at this scale, and the working is worth showing rather
+than asserting: the largest part spans 71 mm, so sixteen bits over its own box is
+71 / 65535, about a micrometre. Two orders of magnitude finer than a printer
+resolves and three finer than a 0.4 mm nozzle.
+
+### They are checked, not assumed
+
+The sim page shades with `abs(dot(n, light))`, so it renders a triangle identically
+whichever way it faces and could never have noticed a winding problem. A slicer
+very much can. So the exporter checks each part and reports rather than hoping:
+
+* **watertight**, every edge used by exactly two triangles, so there is no hole for
+  a slicer to guess the inside of
+* **consistently wound**, those two uses running opposite ways, so no two triangles
+  disagree about which side is out
+* **positively oriented**, signed volume positive, so the surface faces out of the
+  solid rather than into it
+
+All four pass on all three. An inside out part would otherwise be watertight and
+consistent and still print as the negative of itself.
+
+## Printing
+
+Chassis floor down, hub bore up, cage open end up, hood face down. **Not one of them
+needs support**, and nothing overhangs past 45 degrees with no material under it.
+
+Slicer hole compensation must be **off**. The allowance is already in the model, and
+compensating twice is how the bearing bores come out too tight to press a shaft
+into.
 
 ## Resolution is fixed by the gearbox
 

@@ -218,7 +218,8 @@ const src = `/*
  * more trustworthy at the same time.
  *
  * These three parts build the PAN/TILT HEAD, which is the washer-servo profile.
- * The two mirror scanner has no model in this tree.
+ * The two mirror scanner's parts are packed separately in detent-meshes.ts, from a
+ * different source and in a different format.
  */
 
 /** Deflated, base64, int16 triangle soup at ${QUANT} units per millimetre. */
