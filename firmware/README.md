@@ -7,8 +7,26 @@ what the board promises the app.
 | --- | --- | --- | --- |
 | `washer-servo/` | WASHER, servo pan and tilt head | ESP32-WROOM-32E | `washer-servo.ino` |
 | `detent-28byj/` | DETENT, two mirror stepper scanner | ESP32-C3 | `detent-28byj.ino` |
+| `detent-28byj/motortest/` | DETENT bring-up | ESP32-C3 | `motortest.ino` |
 
-`detent-28byj/motortest.ino` is a bring-up sketch, not firmware. It walks the coil
+## One sketch per folder, and the folder is named after it
+
+Both rules are the Arduino IDE's and neither is optional. It concatenates every
+`.ino` in a sketch folder into one translation unit before compiling, so two
+sketches sharing a folder collide on every symbol they both define, and it will not
+open a sketch whose folder disagrees with its name.
+
+That is why `motortest` sits in its own subfolder rather than beside the firmware it
+helps debug. Filing them together is the obvious thing to do and it fails with a
+wall of redefinition errors that say nothing about the actual cause. A subfolder is
+safe: the IDE collects sketch files from the sketch folder itself and does not
+recurse into it.
+
+`pnpm check:sketches` enforces both, because neither shows up in a test, a lint or
+any amount of reading the code. It is not about the code, it is about which files
+the IDE decides belong together.
+
+`detent-28byj/motortest/` is a bring-up sketch, not firmware. It walks the coil
 pins one at a time with no BLE, no timer, no queue and no laser, so a motor that
 will not turn can be blamed on wiring or on config but not on both at once.
 

@@ -21,10 +21,11 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc -b --pretty && tsc -p packages/beam-core/tsconfig.typecheck.json && tsc -p packages/beam-sources/tsconfig.typecheck.json && tsc -p packages/beam-link/tsconfig.typecheck.json",
-    "check": "pnpm lint && pnpm check:style && pnpm typecheck && pnpm check:invariants && pnpm test",
+    "check": "pnpm lint && pnpm check:style && pnpm check:sketches && pnpm typecheck && pnpm check:invariants && pnpm test",
     "check:invariants": "node tools/check-invariants.mjs",
     "dev": "node tools/dev-server.mjs",
-    "check:style": "node tools/check-house-style.mjs"
+    "check:style": "node tools/check-house-style.mjs",
+    "check:sketches": "node tools/check-sketches.mjs"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",

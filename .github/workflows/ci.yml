@@ -36,6 +36,13 @@ jobs:
       - name: house style in templates and docs
         run: pnpm check:style
 
+      # One sketch per folder, folder named after it. The IDE concatenates every
+      # .ino in a folder into one translation unit, so this is a real build break
+      # that nothing else in CI can see: it is not about the code, it is about
+      # which files the IDE decides belong together.
+      - name: arduino sketch layout
+        run: pnpm check:sketches
+
       - name: typecheck and build packages
         run: pnpm typecheck
 

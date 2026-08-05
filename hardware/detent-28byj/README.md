@@ -82,7 +82,7 @@ All nine pins are below 32, so the whole machine state is one register write.
 ESP32C3 Dev Module, **USB CDC On Boot must be Enabled**. Unplug the ULN boards while
 flashing. The BOOT plus RST dance applies on the SuperMini.
 
-If a motor does not turn, run `firmware/motortest` before touching anything else. It
+If a motor does not turn, run `firmware/detent-28byj/motortest/` before touching anything else. It
 isolates wiring and power from the real firmware: no BLE, no timer ISR, no queue, no
 laser, just blocking half steps. If a motor turns there and not in the real firmware,
 the problem is config. If it does not turn there either, the problem is wiring, power,

@@ -30,7 +30,7 @@ write and the step ISR can be as tight as it is.
 ESP32C3 Dev Module, **USB CDC On Boot must be Enabled**. Unplug the ULN boards while
 flashing. The BOOT plus RST dance applies on the SuperMini.
 
-If a motor does not turn, run `motortest.ino` before touching anything else. It has
+If a motor does not turn, run the sketch in `motortest/` before touching anything else. It has
 no BLE, no timer ISR, no queue and no laser, just blocking half steps, so it splits
 wiring and power from config. The pin walk is the decisive test: eight LEDs light in
 sequence, four on board A then four on board B. A pin that never lights its LED is a
