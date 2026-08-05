@@ -11,9 +11,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Version comes from package.json's packageManager field, which is the single
+      # source of truth. Passing it here as well is not belt and braces, it is a hard
+      # error: the action refuses to run when both are set. That is why every CI run
+      # since the first commit failed before it installed anything.
       - uses: pnpm/action-setup@v4
-        with:
-          version: 10
 
       - uses: actions/setup-node@v4
         with:
