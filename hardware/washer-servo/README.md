@@ -19,8 +19,9 @@ They live here now.
 An earlier pass filed the two `galvo*` STLs under `../detent-28byj/` on the strength
 of their names. They are this rig's, and three independent things say so:
 
-* They ship inside `originals/laserriggg (1)/` next to `servo_base.stl`, in the
-  folder of the servo app.
+* All five shipped inside `originals/laserriggg (1)/`, the servo app's own folder,
+  next to `servo_base.stl`. They were moved here and deleted from there once they
+  were confirmed byte identical, so this folder is now the only copy.
 * `laser-rig.html` embeds all three and assembles them by name: base on the table
   with the pan servo inside, `galvobody` on the pan horn, `galvobrack` on the tilt
   horn.
@@ -51,6 +52,47 @@ The pan axis and the tilt axis do not meet. The plate face is 11.5 mm to one sid
 the bore is 8.79 mm back from it, so the beam pivots 2.71 mm **past** the pan axis.
 Over a 152 mm throw that lever arm is worth about a degree, which is why the aiming
 solves for the yaw instead of taking an arctangent.
+
+## Wiring
+
+The board is a **NULLLAB Maker-ESP32 (ESP32-WROOM-32E)**. Firmware, and the longer
+version of this table, is in `../../firmware/washer-servo/`.
+
+| Signal | Pin | Notes |
+| --- | --- | --- |
+| Pan servo | GPIO 26 | Signal only. Servo V+ to an external 5 V rail |
+| Tilt servo | GPIO 25 | Same rail |
+| Laser gate | GPIO 23 | Logic level, 3.3 V, 20 to 40 mA |
+
+**Ground the ESP32, the servo supply and the laser supply together.** This is the
+most common bring-up failure on this rig, and it presents as servos twitching or the
+board resetting when the beam gates, not as an obvious wiring fault.
+
+GPIO 23 switches the laser, it does not power it. A bare 5 mW pointer diode on a
+dropper resistor is the most it will drive directly. Anything with its own driver
+board gets a low side FET and its own supply; the wiring diagram is in the firmware
+README. If the module is active low, send `POL 0`.
+
+## Printing and assembly
+
+Print the base flat, no supports, and the collar with its bore vertical. Slicer hole
+compensation must be off: the allowance is already in the model.
+
+Assembly order, which is also the order the 3D view draws them in:
+
+1. Pan servo drops into the base pocket from the top, tabs resting on the ledge at
+   z = 14. It is a press fit, there are no fasteners.
+2. `galvobody` bolts to the pan horn. Its horn boss is 1.5 mm off the part's own
+   centre so the boss, not the outline, lands on the pan axis.
+3. Tilt servo goes through the 24 x 12 slot in the 3 mm plate **from the outboard
+   side**, so its horn ends up on the inboard face.
+4. `galvobrack` bolts to that horn and the laser module slides into its bore.
+
+The pan axis and the tilt axis do not intersect, and that is not a build error. The
+plate face is 11.5 mm to one side of the pan axis and the bore is 8.79 mm back from
+it, so the beam pivots **2.71 mm past** the pan axis. Over a 152 mm throw that lever
+arm is worth about a degree, which is why the app solves for the yaw rather than
+taking an arctangent.
 
 ## The numbers that are not preferences
 
@@ -94,17 +136,3 @@ That mount height is not cosmetic. The target sits on the floor so its centre is
 half its height, while the head is at 70 mm, and the difference is what the tilt axis
 has to cover. Getting that offset wrong once drew an entire design 159 mm from where
 the beam was actually going.
-
-## Wiring
-
-| Signal | Pin |
-| --- | --- |
-| Pan servo | GPIO 26 |
-| Tilt servo | GPIO 25 |
-| Laser gate | GPIO 23 |
-
-Servo V+ goes to an external 5V supply, grounds commoned. GPIO23 swings 3.3 V and
-sources 20 to 40 mA, which is enough for a bare 5 mW pointer diode on a dropper
-resistor and no more. Anything bigger gets a low-side FET through 220 ohm with a 10k
-pulldown to ground so it stays off during boot, and the laser supply stays separate
-with a common ground.

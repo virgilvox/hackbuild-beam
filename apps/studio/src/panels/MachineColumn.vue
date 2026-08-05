@@ -176,18 +176,34 @@ function toggleGrp(id: string) {
 
         <template v-if="caps?.dither">
           <label class="chk"><input v-model="m.dither" type="checkbox" /> dither</label>
+          <label class="hb-row">
+            draw feed<input v-model.number="m.feedMmS" type="number" step="5" min="0" max="400" />
+            <span class="unit">mm/s</span>
+          </label>
           <p class="hb-note">
-            Alternates the command either side of where the planner put it, once per servo frame.
-            Turns about 0.94 mm of direction dependent error into roughly 0.35 mm of symmetric
-            wobble. Off by default: it holds both servos hunting, which means buzzing and current.
+            Dither alternates the command either side of where the planner put it, once per servo
+            frame. It needs the feed to be slow enough that the mechanics can average the carrier
+            out, so the two are one setting in two boxes: at a 40 mm cap height, dither alone takes
+            the ninetieth percentile error from 5.1 to 3.5 mm, a slow feed alone changes nothing at
+            all, and both together reach 1.5 mm. 40 mm/s is a good starting point. Zero means no
+            limit. Dither is off by default because it holds both servos hunting, which is buzzing
+            and current.
           </p>
         </template>
 
         <template v-if="caps?.lead">
-          <label class="hb-row">lead a<input type="number" step="0.5" min="0" max="30" /><span class="unit">ms</span></label>
+          <label class="hb-row">
+            lead a<input v-model.number="m.leadPanMs" type="number" step="0.5" min="0" max="30" />
+            <span class="unit">ms</span>
+          </label>
+          <label class="hb-row">
+            lead b<input v-model.number="m.leadTiltMs" type="number" step="0.5" min="0" max="30" />
+            <span class="unit">ms</span>
+          </label>
           <p class="hb-note">
             The first axis hauls the second, so it answers late and diagonals grow a hook at every
-            stroke start. Two to four milliseconds straightens them.
+            stroke start. Two to four milliseconds on a straightens them. Worth a few tenths of a
+            millimetre, not the headline: the feed and dither pair above is what carries this rig.
           </p>
         </template>
 

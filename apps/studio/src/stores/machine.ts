@@ -48,6 +48,31 @@ export const useMachine = defineStore("machine", () => {
    * constant buzzing and a lot more current than a servo that has settled. */
   const dither = ref(false);
 
+  /*
+   * Per axis lead, in milliseconds, and the drawing feed in millimetres a second.
+   *
+   * Both exist on the servo rig only, and both are the difference between legible
+   * text and not. Measured on the bench model at a 40 mm cap height, worst of the
+   * ninetieth percentile geometric error:
+   *
+   *   as shipped, feed unset, dither off      5.13 mm
+   *   feed 40 mm/s, dither still off          5.58 mm     slowing down alone does nothing
+   *   feed 40 mm/s, dither on, lead 3/1.5     1.47 mm
+   *
+   * The middle row is the whole point. A servo deadband is hysteresis, not
+   * quantisation: the motor is simply off below some error, so it stops wherever it
+   * got to. Going slower just sits inside the dead zone for longer. Dither breaks
+   * the hysteresis with a symmetric carrier, but the mechanics need several servo
+   * frames to average it out, so it only pays once the beam is crossing well under
+   * one deadband per frame. Neither half works without the other.
+   *
+   * Zero feed means "no limit, use the profile's own default", which is what a rig
+   * that does not need this gets.
+   */
+  const leadPanMs = ref(3);
+  const leadTiltMs = ref(1.5);
+  const feedMmS = ref(0);
+
   const limitsOn = ref(false);
   const limitsDerived = ref(false);
   const limits = ref({ minA: -2000, maxA: 2000, minB: -2000, maxB: 2000 });
@@ -201,7 +226,7 @@ export const useMachine = defineStore("machine", () => {
   return {
     profile, config, adopted, axis, beamOn, queueFree,
     throwMm, sepMm, mountHMm, fieldW, fieldH,
-    invA, invB, invertChecked, dither,
+    invA, invB, invertChecked, dither, leadPanMs, leadTiltMs, feedMmS,
     limitsOn, limitsDerived, limits, persisted, originSet,
     corners, calibration, residualMm, aspect, calibrationOn,
     cornersCaptured, mappingSolved, activeCal, caps, axisUnit,

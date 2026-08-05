@@ -54,6 +54,11 @@ The procedure is the stall hunt: walk the rate up while blinking the beam at hom
 before each pass, mark the spot, and the first rate whose blink comes back somewhere
 else is past pull-out. Set the draw rate to about 70 percent of the last clean rate.
 
+## Firmware
+
+`../../firmware/detent-28byj/`. Flashing notes, the pull-out procedure and the step
+engine are documented there.
+
 ## Wiring
 
 | Signal | Pins |

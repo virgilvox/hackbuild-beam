@@ -226,21 +226,65 @@ export async function persistConfig(): Promise<void> {
   log.sys("config written to the board's flash");
 }
 
-function collectConfig(): Record<string, number | boolean> {
-  const { machine } = stores();
+/**
+ * The installation, in the names the BOARD's config layer uses.
+ *
+ * This has to be built per lineage and it has to use the SDK's own field names,
+ * which is not a style point. The two board configs share almost no vocabulary:
+ * the servo board calls the throw `distMm` and the field `wallW`/`wallH`, the
+ * stepper board calls them `throwMm` and `fieldW`/`fieldH`; one has `invX`/`invY`
+ * and `minX`, the other has no inversion keys at all. A patch keyed on the app's
+ * own names matches nothing, and nothing is exactly what gets sent: the serialiser
+ * skips undefined fields silently, so `push` returned a bare `CFG ` on the servo
+ * rig and dropped the inversions and limits on the stepper rig, with no error
+ * anywhere. Pushing config appeared to work and did nothing.
+ *
+ * That failure is also self concealing, because connect adopts the board's config:
+ * change the throw, push it, reconnect, and the app quietly reverts to the board's
+ * old value with no sign that the write was lost.
+ *
+ * The lineage is the peer's, not the profile's. A profile is what the app thinks it
+ * is talking to; the lineage is what the wire actually is.
+ */
+function collectConfig(): Record<string, unknown> {
+  const { machine, link } = stores();
+  /* The link's lineage when it has one, and the profile's own geometry as the
+   * fallback: two mirrors means the step domain. Parenthesised because `??` binds
+   * looser than `>=`, so the obvious one line version reads as
+   * `(lineage ?? (angle >= 2)) ? ...` and a truthy "pulse" then selects "step". */
+  const lineage: "pulse" | "step" =
+    link.lineage ?? ((machine.profile?.beamAnglePerAxisAngle ?? 1) >= 2 ? "step" : "pulse");
+
+  if (lineage === "step") {
+    return {
+      throwMm: machine.throwMm,
+      sepMm: machine.sepMm,
+      fieldW: machine.fieldW,
+      fieldH: machine.fieldH,
+      invX: machine.invA,
+      invY: machine.invB,
+      limitsOn: machine.limitsOn,
+      minX: machine.limits.minA,
+      maxX: machine.limits.maxA,
+      minY: machine.limits.minB,
+      maxY: machine.limits.maxB,
+    };
+  }
+
+  /*
+   * The servo rig. `dither` and the two lead terms are the ones that were missing
+   * entirely: both are implemented in the firmware, both are exposed as config
+   * keys, and neither was ever sent, so the dither checkbox changed the app's own
+   * resolution estimate and nothing on the bench.
+   */
   return {
-    throwMm: machine.throwMm,
-    sepMm: machine.sepMm,
-    mountHMm: machine.mountHMm,
-    fieldW: machine.fieldW,
-    fieldH: machine.fieldH,
-    invA: machine.invA,
-    invB: machine.invB,
-    limitsOn: machine.limitsOn,
-    minA: machine.limits.minA,
-    maxA: machine.limits.maxA,
-    minB: machine.limits.minB,
-    maxB: machine.limits.maxB,
+    distMm: machine.throwMm,
+    wallW: machine.fieldW,
+    wallH: machine.fieldH,
+    mountH: machine.mountHMm,
+    dither: machine.dither,
+    leadPan: machine.leadPanMs,
+    leadTilt: machine.leadTiltMs,
   };
 }
 

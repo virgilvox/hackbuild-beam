@@ -286,6 +286,17 @@ export const useProject = defineStore("project", () => {
       const cal = machine.activeCal;
       const tl = planJob(placed, p, {
         cal,
+        /*
+         * Drawing feed, when the installation asks for one.
+         *
+         * Only the servo rig sets this, and it is half of a pair: a servo deadband
+         * is hysteresis rather than quantisation, so slowing down on its own buys
+         * nothing measurable. What it buys is TIME for dither's carrier to average
+         * out, and dither is what actually breaks the hysteresis. Together they take
+         * the ninetieth percentile error on a 40 mm cap from 5.1 mm to 1.5 mm; alone,
+         * either one is worth a few tenths. See docs/audit-app.md.
+         */
+        ...(machine.feedMmS > 0 ? { feedMmS: machine.feedMmS } : {}),
         optimise: reorder.value && !noReorder.value,
         /* Unidirectional means never reverse a stroke while ordering, which trades
          * speed for repeatability by never asking the gear train to turn round mid

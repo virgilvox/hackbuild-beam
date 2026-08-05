@@ -224,9 +224,9 @@ const WASHER: MachineGuide = {
     },
     {
       id: "smooth",
-      title: "Check the smoothness readout",
-      body: "Aim for at or above 2.5 deadband steps per frame, or far below one with dither on. The band between them is the bad one.",
-      why: "The two axes are independent hysteresis quantisers. Near one step per frame they cross their deadbands at different moments, so a diagonal comes out as pan-pop, tilt-pop, pan-pop: the worst possible look, and slow with it. Holding the speed down does not help, which is the opposite of what everyone tries first.",
+      title: "Turn dither on and bring the feed down",
+      body: "Set dither on and the draw feed to about 40 mm/s. Both, not either: on a 40 mm cap height the ninetieth percentile error goes 5.1 mm as shipped, 5.6 mm with a slow feed alone, 3.5 mm with dither alone, and 1.5 mm with the two together. The job takes about three times as long.",
+      why: "A servo deadband is hysteresis, not a grid. Below some error the motor is simply off, so it stops wherever it got to and slowing down just sits in the dead zone longer, which is why feed alone measures no better than doing nothing. Dither breaks the hysteresis by keeping the motor always driven, but the mechanics need several servo frames to average the carrier out, so it only pays once the beam is crossing well under one deadband per frame. Each half is useless without the other, which is why this is one step and not two.",
       panel: "path",
       done: () => false,
     },
@@ -241,7 +241,7 @@ const WASHER: MachineGuide = {
     },
     {
       title: "Lead straightens diagonals",
-      body: "The pan servo hauls the whole tilt assembly, so it answers late and coordinated diagonals grow a hook at every stroke start. Two to four milliseconds of lead on pan straightens them without touching the geometry.",
+      body: "The pan servo hauls the whole tilt assembly, so it answers late and coordinated diagonals grow a hook at every stroke start. Two to four milliseconds of lead on pan straightens them without touching the geometry. It is worth a few tenths of a millimetre and no more: it is a finishing touch on top of dither and feed, not a substitute for them.",
     },
     {
       title: "A short throw is expensive",
