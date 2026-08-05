@@ -43,9 +43,20 @@ watch(
     p.reorder, p.unidirectional, p.yaw, p.pitch, p.detail,
     p.imgThreshold, p.imgPitchSteps, p.imgInvert,
     machine.fieldW, machine.fieldH, machine.throwMm, machine.sepMm, machine.calibrationOn,
-    /* Dither changes what the machine can resolve, so it changes the legibility
-     * budget and the warning that comes off it, not just what the board is told. */
+    /*
+     * The profile itself, by identity. It is rebuilt whenever anything it is made
+     * from changes, so watching it covers the servo, dither, the inversions and the
+     * limits in one entry rather than as a list that has to be remembered. The
+     * geometry fields above stay listed because they also move the placement, which
+     * is upstream of the profile.
+     */
+    machine.profile,
     machine.dither,
+    /* The feed is a planner input rather than a profile input, so rebuilding the
+     * profile does not cover it and it needs its own entry here. Without one the
+     * box accepted a number and changed nothing, which is the same shape of bug as
+     * the dither checkbox that only moved the estimate. */
+    machine.feedMmS,
   ],
   replan,
   { immediate: true },

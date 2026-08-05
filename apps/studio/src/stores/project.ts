@@ -166,6 +166,25 @@ export const useProject = defineStore("project", () => {
   const resolutionMm = ref(0);
   const stepsAcross = ref(0);
   const detailWarning = ref<string | null>(null);
+  /**
+   * How far the beam strays from the drawing, in millimetres on the target.
+   *
+   * The number that decides whether text is readable, and it is not `spreadMm`.
+   * Spread deliberately subtracts the mean error because it is asking a different
+   * question: does a stroke drawn left to right land where the same stroke drawn
+   * right to left did. That makes it the right measure of doubling and the wrong
+   * measure of accuracy, and it moves the wrong way for dither, whose entire job is
+   * to trade directional bias for symmetric wobble. Judged on spread alone, the one
+   * setting that makes this rig legible looks like it makes things worse.
+   *
+   * Nor is it the simulator's own worst and mean, which compare the beam to where
+   * the plan wanted it AT THAT INSTANT. Lag along a stroke counts there and is
+   * invisible on the wall; only departure from the stroke shows.
+   *
+   * So this is the geometric one: shortest distance from each lit sample to the
+   * drawing it was meant to be tracing, at the ninetieth percentile.
+   */
+  const accuracyMm = ref(0);
 
   /**
    * The largest cap height whose line still fits the field.
@@ -403,7 +422,10 @@ export const useProject = defineStore("project", () => {
       /* The resolution budget, and an honest warning when the content outruns it. */
       const gain = p.sensitivity({ x: 0, y: 0 }, { x: 1, y: 0 }, cal);
       const stepMmHere = gain > 1e-9 ? 1 / gain : 0;
-      const preset = SERVO_PRESETS[machine.config["sv"] ?? "micro9g"] ?? SERVO_PRESETS["micro9g"]!;
+      /* The servo the operator says is fitted, not the one the board last reported: in
+       * the simulator there is no board, and the whole point of the selector is to
+       * see what a different servo would do before buying one. */
+      const preset = SERVO_PRESETS[machine.servo] ?? SERVO_PRESETS["micro9g"]!;
       const hasDeadband = p.caps.dither;
       const budget = hasDeadband
         ? servoResolution(p, Math.min(machine.fieldW, machine.fieldH), preset, machine.dither)
@@ -476,6 +498,40 @@ export const useProject = defineStore("project", () => {
             `Draw it larger, use fewer characters${p.caps.dither && !machine.dither ? ", or turn dither on" : ""}.`
           : null;
 
+      /*
+       * Geometric accuracy, sampled.
+       *
+       * Every lit sample against every stroke segment is quadratic, and a raster can
+       * put fifty thousand samples against thousands of segments. A stride keeps the
+       * cost bounded: this is a quality readout, not a measurement instrument, and a
+       * few hundred samples fix a percentile perfectly well.
+       */
+      {
+        const lit = result.samples.filter((sm) => sm.laser);
+        const stride = Math.max(1, Math.ceil(lit.length / 900));
+        const errs: number[] = [];
+        for (let i = 0; i < lit.length; i += stride) {
+          const q = lit[i]!.at;
+          let best = Infinity;
+          for (const st of placed) {
+            for (let k = 1; k < st.length; k++) {
+              const a = st[k - 1]!;
+              const b = st[k]!;
+              const vx = b.x - a.x;
+              const vy = b.y - a.y;
+              const L = vx * vx + vy * vy;
+              const t = L < 1e-12 ? 0 : Math.max(0, Math.min(1, ((q.x - a.x) * vx + (q.y - a.y) * vy) / L));
+              const d = Math.hypot(q.x - (a.x + vx * t), q.y - (a.y + vy * t));
+              if (d < best) best = d;
+            }
+            if (best < 0.01) break;
+          }
+          if (Number.isFinite(best)) errs.push(best);
+        }
+        errs.sort((x, y) => x - y);
+        accuracyMm.value = errs.length ? errs[Math.floor(errs.length * 0.9)]! : 0;
+      }
+
       /* Emit the wire stream from the plan. Hermite when the board negotiated it,
        * which is what lets one segment carry a whole acceleration phase. */
       const em = emitSegments(tl, p, {
@@ -494,6 +550,7 @@ export const useProject = defineStore("project", () => {
       estimate.value = tl.dur < 90 ? `${tl.dur.toFixed(1)} s` : `${(tl.dur / 60).toFixed(1)} min`;
       health.value =
         `${placed.length} strokes, ${tl.drawLen.toFixed(0)} mm drawn, ` +
+        `off by ${accuracyMm.value.toFixed(2)} mm, ` +
         `peak ${tl.peak.toFixed(0)} mm/s, spread ${result.spreadMm.toFixed(3)} mm`;
     } catch (e) {
       log.err(e instanceof Error ? e.message : String(e));
@@ -550,7 +607,7 @@ export const useProject = defineStore("project", () => {
     yaw, pitch, detail, spin,
     svgText, image, imgThreshold, imgPitchSteps, imgInvert,
     sketch, strokes, simulated, planned, clipped, commandCount, estimate, health,
-    timeline, sim, spreadMm, resolutionMm, stepsAcross, detailWarning,
+    timeline, sim, spreadMm, accuracyMm, resolutionMm, stepsAcross, detailWarning,
     wire, wireWorstMm, wireMerged,
     isPatternSource, is3d,
     rebuild, onAim, onDraw, onDrawEnd, clearSketch, stepMm,

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
+import { SERVO_PRESETS } from "@virgilvox/beam-core";
 import { useMachine } from "../stores/machine";
 import { useLink } from "../stores/link";
 import { useLog } from "../stores/log";
@@ -22,6 +23,27 @@ const link = useLink();
 const log = useLog();
 
 const caps = computed(() => m.caps);
+
+/** The presets the actuator model knows how to simulate, for the picker. */
+const servoChoices = computed(() =>
+  Object.entries(SERVO_PRESETS).map(([id, p]) => ({ id, label: p.label })),
+);
+
+/**
+ * One deadband, in millimetres on the target.
+ *
+ * The single number that explains this rig's behaviour, and it is not on the
+ * datasheet: a deadband is microseconds of pulse, and what it costs you depends on
+ * the throw. Showing the microseconds alone would be showing the input to the
+ * calculation nobody wants to do.
+ */
+const deadbandMm = computed(() => {
+  const p = SERVO_PRESETS[m.servo];
+  if (!p || !caps.value?.pulseWindow) return null;
+  /* Same conversion the profile uses: the pulse window spans the servo's travel. */
+  const degPerUs = 180 / 2000;
+  return m.throwMm * Math.tan((p.deadband * degPerUs * Math.PI) / 180);
+});
 const unit = computed(() => m.axisUnit);
 const jogStep = ref(10);
 
@@ -171,6 +193,22 @@ function toggleGrp(id: string) {
           <p class="hb-note">
             Comp is what the board applies. Measure the real slack with the lash gauge pattern: it
             draws the same line both ways and the gap between the traces is the slack.
+          </p>
+        </template>
+
+        <template v-if="caps?.pulseWindow">
+          <label class="hb-row">
+            servo
+            <select v-model="m.servo">
+              <option v-for="c in servoChoices" :key="c.id" :value="c.id">{{ c.label }}</option>
+            </select>
+          </label>
+          <p v-if="deadbandMm !== null" class="hb-note">
+            One deadband is <b>{{ deadbandMm.toFixed(2) }} mm</b> on your target at a
+            {{ m.throwMm.toFixed(0) }} mm throw. That is the miss this rig cannot plan its way out
+            of, and it is why the same drawing looks better larger. Changing this changes what the
+            preview predicts, so you can see what a different servo would buy before buying one:
+            on the bench model the metal geared 9g takes a 58 mm cap line from 1.70 mm to 0.73 mm.
           </p>
         </template>
 

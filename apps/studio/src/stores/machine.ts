@@ -1,5 +1,5 @@
 import { defineStore } from "pinia";
-import { computed, ref, shallowRef } from "vue";
+import { computed, ref, shallowRef, watch } from "vue";
 import {
   createDetent28byj,
   createWasherServo,
@@ -69,6 +69,22 @@ export const useMachine = defineStore("machine", () => {
    * Zero feed means "no limit, use the profile's own default", which is what a rig
    * that does not need this gets.
    */
+  /*
+   * Which servo is actually bolted to the rig.
+   *
+   * This is not cosmetic and it is not only a label. The preset carries the
+   * deadband, slew, acceleration, frame rate and gear lash that the simulator's
+   * actuator model runs on, so changing it changes what the preview predicts and
+   * what the resolution budget says is achievable. On the bench model, moving from
+   * the plastic geared 9g to the metal geared one takes the ninetieth percentile
+   * error on a 58 mm cap from 1.70 mm to 0.73 mm, which is a larger improvement
+   * than anything available in software.
+   *
+   * The board stores this too, under `sv`, so connecting adopts whatever the rig
+   * says it is wearing.
+   */
+  const servo = ref<string>("micro9g");
+
   const leadPanMs = ref(3);
   const leadTiltMs = ref(1.5);
   const feedMmS = ref(0);
@@ -107,6 +123,7 @@ export const useMachine = defineStore("machine", () => {
             invA: invA.value,
             invB: invB.value,
             dither: dither.value,
+            servo: servo.value,
           })
         : createDetent28byj({
             throwMm: throwMm.value,
@@ -120,6 +137,33 @@ export const useMachine = defineStore("machine", () => {
             maxB: limits.value.maxB,
           });
   }
+
+  /*
+   * Rebuild the profile whenever anything it is built from changes.
+   *
+   * Without this the profile is only ever constructed at connect, so every
+   * installation control in the panel edited the app's opinion and not the model:
+   * the actuator the simulator runs, with its deadband, slew and gear lash, stayed
+   * whatever it was when the board answered. Dither was the visible case, because
+   * the resolution readout took it as a direct argument and moved while the
+   * simulated beam did not, so the number said one thing and the preview showed
+   * another.
+   *
+   * Watching the inputs rather than calling rebuild from each control means a new
+   * setting cannot be added and quietly forgotten. The profile itself is not
+   * watched, so this cannot feed back on itself.
+   */
+  watch(
+    () => [
+      throwMm.value, sepMm.value, mountHMm.value, fieldW.value, fieldH.value,
+      invA.value, invB.value, dither.value, servo.value, limitsOn.value,
+      limits.value.minA, limits.value.maxA, limits.value.minB, limits.value.maxB,
+    ],
+    () => {
+      const id = profile.value?.id;
+      if (id) rebuildProfile(id);
+    },
+  );
 
   function setProfile(p: MachineProfile) {
     profile.value = p;
@@ -226,7 +270,7 @@ export const useMachine = defineStore("machine", () => {
   return {
     profile, config, adopted, axis, beamOn, queueFree,
     throwMm, sepMm, mountHMm, fieldW, fieldH,
-    invA, invB, invertChecked, dither, leadPanMs, leadTiltMs, feedMmS,
+    invA, invB, invertChecked, dither, servo, leadPanMs, leadTiltMs, feedMmS,
     limitsOn, limitsDerived, limits, persisted, originSet,
     corners, calibration, residualMm, aspect, calibrationOn,
     cornersCaptured, mappingSolved, activeCal, caps, axisUnit,

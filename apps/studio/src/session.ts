@@ -10,6 +10,7 @@
  * out, checking what the machine will really draw) needs no hardware at all.
  */
 
+import { SERVO_PRESETS } from "@virgilvox/beam-core";
 import { useLink } from "./stores/link";
 import { useMachine } from "./stores/machine";
 import { useJob } from "./stores/job";
@@ -131,6 +132,20 @@ function applyAdopted(cfg: Readonly<Record<string, string>>) {
   if (mh !== undefined && Number.isFinite(mh)) machine.mountHMm = mh;
   if (fw !== undefined && Number.isFinite(fw)) machine.fieldW = fw;
   if (fh !== undefined && Number.isFinite(fh)) machine.fieldH = fh;
+
+  /* The board knows which servo it is wearing, and it is the authority on its own
+   * installation. Only adopt a name the app actually models: a board carrying a
+   * string we have no preset for would otherwise silently select the fallback and
+   * the operator would be reading predictions for the wrong hardware. */
+  const sv = cfg["sv"];
+  if (sv !== undefined && Object.prototype.hasOwnProperty.call(SERVO_PRESETS, sv)) {
+    machine.servo = sv;
+  }
+  if (cfg["dit"] !== undefined) machine.dither = cfg["dit"] === "1";
+  const ffp = num("ffp");
+  const fft = num("fft");
+  if (ffp !== undefined && Number.isFinite(ffp)) machine.leadPanMs = ffp;
+  if (fft !== undefined && Number.isFinite(fft)) machine.leadTiltMs = fft;
 
   if (cfg["lon"] !== undefined) machine.limitsOn = cfg["lon"] === "1";
   if (cfg["invx"] !== undefined) machine.invA = cfg["invx"] === "1";
@@ -282,6 +297,7 @@ function collectConfig(): Record<string, unknown> {
     wallW: machine.fieldW,
     wallH: machine.fieldH,
     mountH: machine.mountHMm,
+    servo: machine.servo,
     dither: machine.dither,
     leadPan: machine.leadPanMs,
     leadTilt: machine.leadTiltMs,
