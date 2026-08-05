@@ -82,6 +82,40 @@ correct and dither then adds noise around a good answer.
 Dither also costs a servo that hunts continuously, drawing more current and audible
 across a room. Compensation costs nothing to run.
 
+### It moves the limit rather than removing it
+
+Compensation is best on every preset, but it also flattens the difference between
+them, and that is worth understanding rather than being surprised by:
+
+| preset | deadband | none | dither | compensated |
+| --- | --- | --- | --- | --- |
+| 9g micro | 1.91 mm | 6.56 | 1.70 | 0.52 |
+| 9g metal | 1.43 mm | 4.54 | 0.73 | 0.48 |
+| standard | 0.96 mm | 3.14 | 0.94 | 0.34 |
+| digital | 0.48 mm | 1.40 | 1.35 | 0.52 |
+
+A digital servo with four times less deadband than the 9g scores the same once both
+are compensated. The floor sits at 0.35 to 0.5 mm for every preset at every feed
+from 5 to 80 mm/s, and the axis quantum is 0.239 mm, so the residual is about two
+command steps.
+
+Two other explanations were tested and rejected. Shorter wire segments do not move
+it: 0.47 mm at a 0.30 mm emitter tolerance and 0.45 at 0.005, across a tenfold
+change in segment count. Nor is it the lead term, which is helping rather than
+hurting, since removing it doubles the error.
+
+So with compensation on **the machine is quantisation limited, not deadband
+limited**. That is why a better servo stops paying, and it is the reason the
+resolution model now floors every strategy at two quanta rather than letting the
+dither factor through: unfloored it claimed 0.18 mm for a digital servo where
+measurement puts the error at 1.35 mm, which would have recommended an upgrade that
+cannot deliver.
+
+Getting below it needs sub-microsecond commands. Neither the wire format, which
+carries whole microseconds, nor the firmware's `writeMicroseconds` can express that
+today, though the ESP32's LEDC timer could. That is the next real lever on this rig
+and it is not a planner change.
+
 The two models disagree on the size of the win, 8.6x against 3.1x on the same input,
 and the difference is real rather than noise: the emitter bakes the correction into
 segment endpoints and the board's cubic carries it smoothly, where the simulator

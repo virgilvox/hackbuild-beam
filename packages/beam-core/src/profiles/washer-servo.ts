@@ -414,24 +414,56 @@ export function servoResolution(
   fieldMm: number,
   preset: ServoPreset,
   dither: boolean,
+  /** Directional compensation strength, as a fraction of one deadband. */
+  backlashComp = 0,
 ): ServoResolution {
   const gain = profile.sensitivity({ x: 0, y: 0 }, { x: 1, y: 0 });
   const deadbandMm = gain > 1e-9 ? preset.deadband / gain : 0;
   const quantumMm = gain > 1e-9 ? 1 / gain : 0;
   /*
-   * Placement uncertainty, which is the full deadband and not half of it.
+   * Placement uncertainty. Which term decides it depends on what is being done
+   * about the deadband, because the deadband stops being the binding constraint
+   * once it is cancelled rather than merely averaged.
    *
-   * Half a deadband is the average error. What decides whether a shape reads is the
-   * SPREAD: a stroke approached from the left stops short on the left, the same
-   * stroke approached from the right stops short on the right, and the gap between
-   * those two is a whole deadband. That is the doubling you see on a retraced line,
-   * and it is the number a feature has to be several multiples of.
+   * UNCOMPENSATED it is the full deadband and not half of it. Half is the average
+   * error; what decides whether a shape reads is the SPREAD. A stroke approached
+   * from the left stops short on the left, the same stroke approached from the
+   * right stops short on the right, and the gap between those is a whole deadband.
+   * That is the doubling on a retraced line.
    *
-   * Dither breaks the hysteresis by keeping the servo hunting, and the bench figure
-   * is about 0.35 mm of symmetric wobble where there was 0.94 mm of direction
-   * dependent error, so a little over a third.
+   * DITHERED, the hysteresis is broken by keeping the servo hunting and the bench
+   * figure is about 0.35 mm of symmetric wobble where there was 0.94 mm of
+   * direction dependent error, a little over a third.
+   *
+   * COMPENSATED, the directional term is gone and what is left is how finely a
+   * position can be ASKED for. The wire carries whole microseconds, so the command
+   * grid is one quantum however good the servo is, and measurement puts the
+   * residual at about two of them: 0.47, 0.49, 0.53 and 0.46 mm for the four
+   * presets against a 0.239 mm quantum, essentially flat across a deadband range of
+   * four to one. The deadband term is kept as a floor so a truly coarse servo is
+   * not promised a resolution its own dead zone cannot deliver.
+   *
+   * The practical consequence is worth stating plainly: once compensation is on,
+   * a better servo buys very little, because the limit has moved to the pulse
+   * resolution. Going below it means sub-microsecond commands, which neither the
+   * wire format nor writeMicroseconds can express today.
    */
-  const effectiveMm = dither ? deadbandMm * 0.37 : deadbandMm;
+  const compensated = backlashComp > 0;
+  /*
+   * The command grid floors every strategy, not just compensation. A position can
+   * only be asked for in whole microseconds, so no amount of cleverness about the
+   * deadband gets below it, and a model that lets one strategy through the floor
+   * will recommend a servo upgrade that cannot pay. The dither factor in particular
+   * was calibrated on the 9g servo and, unfloored, claimed 0.18 mm for a digital
+   * one where measurement puts the error at 1.35.
+   */
+  const floorMm = quantumMm * 2;
+  const strategyMm = compensated
+    ? deadbandMm * 0.25
+    : dither
+      ? deadbandMm * 0.37
+      : deadbandMm;
+  const effectiveMm = Math.max(compensated || dither ? floorMm : 0, strategyMm);
   return {
     deadbandMm,
     quantumMm,

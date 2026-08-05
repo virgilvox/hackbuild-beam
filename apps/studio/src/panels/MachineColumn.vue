@@ -226,7 +226,9 @@ function toggleGrp(id: string) {
             largest single improvement available to this rig: on a 58 mm cap line it takes the
             error from 6.56 mm to 0.52 mm. 100 percent is one deadband and is usually right.
             <b>It replaces dither rather than joining it</b>: run together they are worse than this
-            alone, and this one does not leave the servos hunting.
+            alone, and this one does not leave the servos hunting. With it on the rig stops being
+            limited by its deadband and starts being limited by the command grid, which is one
+            whole microsecond, so a better servo then buys very little.
           </p>
         </template>
 

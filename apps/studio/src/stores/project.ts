@@ -462,7 +462,7 @@ export const useProject = defineStore("project", () => {
       const preset = SERVO_PRESETS[machine.servo] ?? SERVO_PRESETS["micro9g"]!;
       const hasDeadband = p.caps.dither;
       const budget = hasDeadband
-        ? servoResolution(p, Math.min(machine.fieldW, machine.fieldH), preset, machine.dither)
+        ? servoResolution(p, Math.min(machine.fieldW, machine.fieldH), preset, machine.dither, machine.backlashComp)
         : { deadbandMm: stepMmHere, quantumMm: stepMmHere, effectiveMm: stepMmHere,
             stepsAcrossField: Math.min(machine.fieldW, machine.fieldH) / Math.max(1e-9, stepMmHere) };
 
@@ -529,7 +529,7 @@ export const useProject = defineStore("project", () => {
           ? `Too fine for this machine. ${source.value === "text" ? "Each character" : "The drawing"} is about ` +
             `${featureSteps.toFixed(0)} resolvable steps across, and it takes roughly 8 to read as a shape. ` +
             `One step is ${budget.effectiveMm.toFixed(2)} mm on your target. ` +
-            `Draw it larger, use fewer characters${p.caps.dither && !machine.dither ? ", or turn dither on" : ""}.`
+            `Draw it larger, use fewer characters${p.caps.dither && machine.backlashComp <= 0 ? ", or turn backlash compensation on" : ""}.`
           : null;
 
       /*
