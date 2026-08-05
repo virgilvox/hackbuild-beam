@@ -1,0 +1,40 @@
+name: firmware
+
+on:
+  push:
+    branches: [main]
+    paths: ["firmware/**", ".github/workflows/firmware.yml"]
+  pull_request:
+    paths: ["firmware/**", ".github/workflows/firmware.yml"]
+
+# It cannot run motion, but it can never ship a firmware that does not build.
+# Both boards compile, because the shared headers under firmware/lib are the
+# thing most likely to break one rig while the other still works.
+jobs:
+  compile:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - sketch: firmware/detent
+            fqbn: esp32:esp32:esp32c3
+          - sketch: firmware/washer
+            fqbn: esp32:esp32:esp32
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: arduino/setup-arduino-cli@v2
+
+      - name: install the esp32 core
+        run: |
+          arduino-cli core update-index --additional-urls https://espressif.github.io/arduino-esp32/package_esp32_index.json
+          arduino-cli core install esp32:esp32 --additional-urls https://espressif.github.io/arduino-esp32/package_esp32_index.json
+
+      - name: compile ${{ matrix.sketch }}
+        run: |
+          if ls ${{ matrix.sketch }}/*.ino >/dev/null 2>&1; then
+            arduino-cli compile --fqbn ${{ matrix.fqbn }} --library firmware/lib ${{ matrix.sketch }}
+          else
+            echo "sketch not present yet, skipping (M3)"
+          fi

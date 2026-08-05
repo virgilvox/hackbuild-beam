@@ -1,0 +1,123 @@
+/*
+ * hack.build design tokens.
+ *
+ * Taken from the two shipped tools rather than reinvented, because the look is not
+ * decoration: it is a paper-and-ink letterpress language where the instrument
+ * surfaces (the canvas, the console, the header, the run dock) invert to near black
+ * and everything else stays on cream. That contrast is what tells you at a glance
+ * which parts of the screen are the machine and which parts are the paperwork.
+ *
+ * The single most recognisable detail is the hard offset shadow. Never blurred,
+ * always solid, and the control physically travels by the shadow offset when you
+ * press it. Second is the pink offset shadow on the viewport, which is the one
+ * place the accent is spent on something structural.
+ *
+ * This folder is deliberately not a package. It lives once and travels by folder
+ * copy, and nothing in it imports beam code.
+ */
+
+:root {
+  /* ---------------------------------------------------------------- palette */
+
+  /* Pink is the single accent and this value is canonical: it is the favicon
+   * colour and what the stepper tool ships. */
+  --hb-pink: #fe0386;
+  --hb-pink-dark: #c40268;
+  --hb-pink-tint: rgba(254, 3, 134, 0.12);
+
+  --hb-paper: #f5f0e6;
+  --hb-paper-dark: #e8e0d0;
+  --hb-paper-cream: #faf8f3;
+
+  --hb-ink: #1a1a1a;
+  --hb-ink-2: #0a0a0a;
+  --hb-ink-light: #444;
+  --hb-ink-muted: #6b6b6b;
+  --hb-ink-faint: #999;
+
+  /* Surfaces that live inside a dark instrument panel. */
+  --hb-dim: #8e8880;
+  --hb-dim-line: #33302c;
+  --hb-dim-line-2: #2e2b28;
+
+  /* The one green in the system. It means exactly one thing: a corner is
+   * captured. Do not spend it on anything else. */
+  --hb-ok: #37ff8b;
+  --hb-danger: #ff5b3a;
+
+  /* ----------------------------------------------------------- typography */
+
+  /*
+   * Five faces, each with a job, because nothing sets everything in one face.
+   * In an instrument UI most of the text is utility text, so the mono carries the
+   * load and the display face is spent sparingly on headings.
+   */
+  --hb-marker: "Permanent Marker", cursive;
+  --hb-type: "Special Elite", "Courier New", monospace;
+  --hb-term: "VT323", ui-monospace, monospace;
+  --hb-mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+  --hb-serif: "Libre Baskerville", Georgia, serif;
+
+  /* ---------------------------------------------------------------- shape */
+
+  /* Solid, never blurred. The control travels by this offset when pressed. */
+  --hb-shadow: 4px 4px 0 0 var(--hb-ink);
+  --hb-shadow-sm: 3px 3px 0 0 var(--hb-ink);
+  --hb-shadow-pink: 3px 3px 0 0 var(--hb-pink);
+  --hb-shadow-view: 5px 5px 0 0 var(--hb-pink);
+  --hb-shadow-modal: 8px 8px 0 0 var(--hb-pink);
+
+  --hb-radius: 0;
+  --hb-header-h: 52px;
+  --hb-aside-w: 288px;
+
+  /* --------------------------------------------------------------- schemes */
+
+  --hb-bg: var(--hb-paper);
+  --hb-bg-raised: var(--hb-paper-cream);
+  --hb-bg-sunken: var(--hb-paper-dark);
+  --hb-fg: var(--hb-ink);
+  --hb-fg-muted: var(--hb-ink-light);
+  --hb-fg-faint: var(--hb-ink-muted);
+  --hb-rule: var(--hb-ink);
+}
+
+/*
+ * The ink scheme inverts the paper. It exists because a bench in a dark room is a
+ * real place, but paper is the default: it is what both shipped tools look like and
+ * what the design language was built for.
+ */
+[data-scheme="ink"] {
+  --hb-bg: #14120f;
+  --hb-bg-raised: #1c1a16;
+  --hb-bg-sunken: #0a0a0a;
+  --hb-fg: var(--hb-paper);
+  --hb-fg-muted: #b3aca2;
+  --hb-fg-faint: var(--hb-dim);
+  --hb-rule: #3a3733;
+  --hb-shadow: 4px 4px 0 0 #000;
+  --hb-shadow-sm: 3px 3px 0 0 #000;
+}
+
+/* ------------------------------------------------------------------ grain -- */
+
+/*
+ * Paper grain. Inline turbulence rather than a bitmap, so it costs a few hundred
+ * bytes in the single file build instead of a texture, and it multiplies so it
+ * darkens the cream without touching the blacks.
+ */
+.hb-grain::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  opacity: 0.075;
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4'/%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+[data-scheme="ink"] .hb-grain::after {
+  mix-blend-mode: screen;
+  opacity: 0.04;
+}

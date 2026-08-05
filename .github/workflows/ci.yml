@@ -1,0 +1,55 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # Boundaries and house style are a build failure, not a review comment.
+      # This is where "beam-core imports nothing" and "no em dashes anywhere"
+      # actually get enforced.
+      - name: lint, boundaries and house style
+        run: pnpm lint
+
+      # ESLint only sees .ts and .js. UI copy lives in .html and .vue, so the
+      # house-style rule has to cover those too or it is unenforced exactly where
+      # it matters most.
+      - name: house style in templates and docs
+        run: pnpm check:style
+
+      - name: typecheck and build packages
+        run: pnpm typecheck
+
+      - name: invariant citations resolve
+        run: pnpm check:invariants
+
+      - name: unit tests
+        run: pnpm test
+
+      # The generated protocol header must match the one in the tree. The wire
+      # contract has exactly one source and this is what stops the firmware and
+      # the library from drifting apart, which has already happened once.
+      - name: protocol spec has not drifted
+        run: |
+          if [ -d tools/gen-protocol ] && [ -f tools/gen-protocol/index.js ]; then
+            node tools/gen-protocol/index.js --check
+          else
+            echo "gen-protocol not implemented yet, skipping (M1)"
+          fi

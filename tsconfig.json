@@ -1,0 +1,8 @@
+{
+  "files": [],
+  "references": [
+    { "path": "./packages/beam-core" },
+    { "path": "./packages/beam-sources" },
+    { "path": "./packages/beam-link" }
+  ]
+}

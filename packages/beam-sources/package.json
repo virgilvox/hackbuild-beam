@@ -1,0 +1,32 @@
+{
+  "name": "@virgilvox/beam-sources",
+  "version": "0.0.0",
+  "description": "BEAM content sources: stroke font, 3D wireframes, SVG import, image raster, calibration patterns, sketch. Content in, strokes out.",
+  "license": "MIT",
+  "author": "Moheeb Zara",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/virgilvox/hackbuild-beam.git",
+    "directory": "packages/beam-sources"
+  },
+  "type": "module",
+  "sideEffects": false,
+  "files": ["dist"],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@virgilvox/beam-core": "workspace:*"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  }
+}

@@ -1,0 +1,42 @@
+{
+  "name": "@virgilvox/beam-core",
+  "version": "0.0.0",
+  "description": "BEAM engine: machine profiles, geometry, planner, wire protocol, firmware reference model. Zero dependencies, runs anywhere.",
+  "license": "MIT",
+  "author": "Moheeb Zara",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/virgilvox/hackbuild-beam.git",
+    "directory": "packages/beam-core"
+  },
+  "type": "module",
+  "sideEffects": false,
+  "files": ["dist"],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./profiles/washer-servo": {
+      "types": "./dist/profiles/washer-servo.d.ts",
+      "default": "./dist/profiles/washer-servo.js"
+    },
+    "./profiles/detent-28byj": {
+      "types": "./dist/profiles/detent-28byj.d.ts",
+      "default": "./dist/profiles/detent-28byj.js"
+    },
+    "./testing": {
+      "types": "./dist/testing/index.d.ts",
+      "default": "./dist/testing/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {},
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  }
+}

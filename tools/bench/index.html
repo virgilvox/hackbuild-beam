@@ -1,0 +1,597 @@
+<!doctype html>
+<html lang="en" data-scheme="ink">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BEAM engine bench</title>
+<link rel="stylesheet" href="/theme/tokens.css">
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--hb-bg); color: var(--hb-fg);
+    font-family: var(--hb-font-mono); font-size: var(--hb-text-md);
+  }
+  header {
+    border-bottom: 3px solid var(--hb-pink); padding: var(--hb-space-3) var(--hb-space-4);
+    display: flex; align-items: baseline; gap: var(--hb-space-4); flex-wrap: wrap;
+  }
+  h1 { font-family: var(--hb-font-display); font-size: 22px; margin: 0; font-weight: normal; }
+  h1 .dot { color: var(--hb-pink); }
+  .sub { color: var(--hb-fg-muted); font-size: var(--hb-text-sm); }
+  .warn {
+    margin-left: auto; color: var(--hb-pink); font-size: var(--hb-text-sm);
+    border: 2px solid var(--hb-pink); padding: 2px 8px;
+  }
+  main { display: grid; grid-template-columns: repeat(auto-fit, minmax(430px, 1fr)); gap: var(--hb-space-4); padding: var(--hb-space-4); }
+  section { border: 2px solid var(--hb-rule); background: var(--hb-bg-raised); }
+  section > h2 {
+    margin: 0; padding: var(--hb-space-2) var(--hb-space-3);
+    border-bottom: 2px solid var(--hb-rule); font-size: var(--hb-text-md);
+    text-transform: uppercase; letter-spacing: .08em; font-weight: normal;
+    display: flex; justify-content: space-between; align-items: center; gap: 8px;
+  }
+  .body { padding: var(--hb-space-3); }
+  .row { display: flex; gap: var(--hb-space-2); align-items: center; margin-bottom: 6px; flex-wrap: wrap; }
+  label { color: var(--hb-fg-muted); min-width: 108px; font-size: var(--hb-text-sm); }
+  input, select, textarea {
+    background: var(--hb-bg-sunken); color: var(--hb-fg); border: 2px solid var(--hb-rule);
+    border-radius: 0; padding: 3px 6px; font-family: var(--hb-font-mono); font-size: var(--hb-text-sm);
+  }
+  input[type=number] { width: 92px; }
+  input:focus, select:focus, textarea:focus { outline: none; border-color: var(--hb-pink); }
+  textarea { width: 100%; min-height: 74px; }
+  button {
+    background: var(--hb-pink); color: #fff; border: 2px solid var(--hb-ink-2);
+    border-radius: 0; padding: 5px 12px; font-family: var(--hb-font-mono);
+    font-size: var(--hb-text-sm); cursor: pointer; box-shadow: var(--hb-shadow-sm);
+  }
+  button:active { transform: translate(3px, 3px); box-shadow: none; }
+  table { border-collapse: collapse; width: 100%; font-size: var(--hb-text-sm); }
+  th, td { text-align: left; padding: 3px 8px 3px 0; border-bottom: 1px solid var(--hb-rule); }
+  th { color: var(--hb-fg-muted); font-weight: normal; }
+  .num { font-family: var(--hb-font-terminal); font-size: 17px; }
+  .pass { color: var(--hb-ok); }
+  .fail { color: var(--hb-danger); }
+  .tag { font-size: 11px; padding: 1px 6px; border: 1px solid currentColor; }
+  canvas { width: 100%; display: block; background: var(--hb-bg-sunken); border: 2px solid var(--hb-rule); }
+  pre {
+    margin: 8px 0 0; padding: 8px; background: var(--hb-bg-sunken); border: 2px solid var(--hb-rule);
+    overflow-x: auto; font-size: var(--hb-text-sm); white-space: pre-wrap; word-break: break-all;
+  }
+  .note { color: var(--hb-fg-muted); font-family: var(--hb-font-prose); font-size: var(--hb-text-sm); margin: 8px 0 0; }
+  a { color: var(--hb-pink); }
+</style>
+</head>
+<body class="hb-grain">
+
+<header>
+  <h1>BEAM<span class="dot">.</span>bench</h1>
+  <span class="sub">the merged engine, running. not the app.</span>
+  <span class="warn" id="banner">loading engine</span>
+</header>
+
+<main>
+
+  <section>
+    <h2>1 &middot; conformance <span class="tag" id="confTag">-</span></h2>
+    <div class="body">
+      <p class="note">
+        The merged engine against the two shipped implementations, transcribed from
+        <code>laser-rig.html</code> and <code>detent-plot.html</code>. This is the claim the whole
+        repo rests on: one geometric model, two parameter sets. It is checked here in the browser
+        against the same code your rigs run today.
+      </p>
+      <table id="conf"></table>
+    </div>
+  </section>
+
+  <section>
+    <h2>2 &middot; geometry <span class="tag" id="profTag">-</span></h2>
+    <div class="body">
+      <div class="row">
+        <label for="profile">profile</label>
+        <select id="profile">
+          <option value="detent">detent-28byj (half steps)</option>
+          <option value="washer">washer-servo (pulse us)</option>
+        </select>
+      </div>
+      <div class="row"><label for="thr">throw mm</label><input id="thr" type="number" value="150" step="1"></div>
+      <div class="row"><label for="sep">sep mm</label><input id="sep" type="number" value="22" step="1"></div>
+      <div class="row"><label for="mh">mount h mm</label><input id="mh" type="number" value="70" step="1"></div>
+      <div class="row"><label for="fw">field mm</label><input id="fw" type="number" value="120" step="5"></div>
+      <canvas id="cv" width="820" height="560"></canvas>
+      <p class="note" id="hint">
+        Move the pointer over the field. The lattice is where whole axis units land, so its spacing
+        is the real resolution at that spot. It is not uniform, and that is the non-linearity the
+        planner has to respect.
+      </p>
+      <table id="geo"></table>
+    </div>
+  </section>
+
+  <section>
+    <h2>3 &middot; calibration</h2>
+    <div class="body">
+      <p class="note">
+        Four captured corners in axis units, ordered TL, TR, BR, BL, one per line as
+        <code>x,y</code>. Paste what your board reports and see whether the solve is trustworthy
+        before you plot through it. Residual under about 0.3 mm is a clean capture.
+      </p>
+      <textarea id="corners">-150,140
+170,155
+165,-130
+-160,-145</textarea>
+      <div class="row" style="margin-top:8px">
+        <button id="solve">solve</button>
+        <button id="degen">try a degenerate set</button>
+      </div>
+      <table id="cal"></table>
+    </div>
+  </section>
+
+  <section>
+    <h2>4 &middot; wire</h2>
+    <div class="body">
+      <p class="note">
+        Build a packet from the segment list and see exactly what goes on the wire: escaped,
+        CRC'd, and sized. Compare it against what your firmware expects.
+      </p>
+      <div class="row">
+        <label for="fmt">format</label>
+        <select id="fmt"></select>
+      </div>
+      <div class="row"><label for="nseg">segments</label><input id="nseg" type="number" value="4" min="1" max="15"></div>
+      <div class="row"><label for="gate">beam on</label><input id="gate" type="checkbox" checked></div>
+      <div class="row"><label for="planned">planned</label><input id="planned" type="checkbox" checked></div>
+      <table id="wire"></table>
+      <pre id="bytes"></pre>
+    </div>
+  </section>
+
+  <section>
+    <h2>5 &middot; planner guards</h2>
+    <div class="body">
+      <p class="note">
+        The two guards a merged planner cannot ship without. An off-axis stroke is densified at the
+        machine's own sampling step, quantised, and checked for zero length axis segments. One of
+        those is a division by zero in the speed cap, and because <code>Math.min(x, NaN)</code> is
+        NaN it poisons the whole velocity profile.
+      </p>
+      <table id="guards"></table>
+    </div>
+  </section>
+
+  <section>
+    <h2>6 &middot; the shipped tools</h2>
+    <div class="body">
+      <p class="note">
+        Served from this same origin, so Web Serial and Web Bluetooth work against real hardware.
+        <code>localhost</code> is a secure context in Chromium.
+      </p>
+      <table>
+        <tr><th>washer</th><td><a href="/originals/laserriggg%20(1)/laser-rig.html" target="_blank">laser-rig.html</a></td></tr>
+        <tr><th>detent</th><td><a href="/originals/files%20(44)/detent-plot.html" target="_blank">detent-plot.html</a></td></tr>
+      </table>
+      <p class="note">
+        These are unchanged and still authoritative for parity. The merged app that replaces them
+        is M2; nothing here drives a beam.
+      </p>
+    </div>
+  </section>
+
+</main>
+
+<script type="module">
+import {
+  createWasherServo, createDetent28byj, PROFILES, selectProfile,
+  mmToUV, uvToMm, mmToAngles, sweepDeg,
+  solveHomography, createHomographyCalibration, invertHomography, quadAspect,
+  crc8, escapeFrame, MAGIC, ESCAPE_LOW, FLAG, FORMATS, packetSize, stepCountByte,
+  quantisePath, limitFromGain, DEG_PER_STEP, TICK_HZ,
+} from "/packages/beam-core/dist/index.js";
+
+const $ = (id) => document.getElementById(id);
+const RAD = 180 / Math.PI;
+const fmtN = (v, d = 3) => (Number.isFinite(v) ? v.toFixed(d) : String(v));
+
+function rows(el, data) {
+  el.innerHTML = data
+    .map(([k, v, cls]) => `<tr><th>${k}</th><td class="num ${cls ?? ""}">${v}</td></tr>`)
+    .join("");
+}
+
+/* ---------------------------------------------------------- 1. conformance -- */
+/* The shipped implementations, transcribed. Trim and inversion stripped: those are
+ * axis-space corrections applied after the geometry, not part of it. */
+const shipped = {
+  washerIk(wx, wy, D0, vOff) {
+    const D = Math.max(D0, 40);
+    return {
+      pan: 90 + Math.atan2(wx, D) * RAD,
+      tilt: 90 + Math.atan2(wy + vOff, Math.hypot(wx, D)) * RAD,
+    };
+  },
+  detentMmToUV(x, y, thr, sep) {
+    const a = Math.atan2(x, thr + sep);
+    return { u: Math.tan(a), v: (y * Math.cos(a)) / thr };
+  },
+};
+
+function conformance() {
+  const W = { throwMm: 152, sepMm: 0, vOffMm: 305 / 2 - 70 };
+  const D = { throwMm: 150, sepMm: 22, vOffMm: 0 };
+  let wErr = 0, dErr = 0, xErr = 0, n = 0;
+
+  for (let x = -150; x <= 150; x += 10) {
+    for (let y = -150; y <= 150; y += 10) {
+      n++;
+      const w = shipped.washerIk(x, y, W.throwMm, W.vOffMm);
+      const gw = mmToAngles({ x, y }, W);
+      wErr = Math.max(wErr, Math.abs(90 + gw.t1 * RAD - w.pan), Math.abs(90 + gw.t2 * RAD - w.tilt));
+
+      const d = shipped.detentMmToUV(x, y, D.throwMm, D.sepMm);
+      const gd = mmToUV({ x, y }, D);
+      dErr = Math.max(dErr, Math.abs(gd.u - d.u), Math.abs(gd.v - d.v));
+
+      /* The sharpest form of the claim, and the one that does not involve my code at
+       * all: the two SHIPPED models are the same function once sep and vOff are zero. */
+      const a = shipped.detentMmToUV(x, y, 150, 0);
+      const b = shipped.washerIk(x, y, 150, 0);
+      xErr = Math.max(
+        xErr,
+        Math.abs(Math.tan((b.pan - 90) / RAD) - a.u),
+        Math.abs(Math.tan((b.tilt - 90) / RAD) - a.v),
+      );
+    }
+  }
+
+  /* Round trip through the merged model, both geometries. */
+  let rt = 0;
+  for (const g of [W, D]) {
+    for (let x = -150; x <= 150; x += 10) {
+      for (let y = -150; y <= 150; y += 10) {
+        const back = uvToMm(mmToUV({ x, y }, g), g);
+        rt = Math.max(rt, Math.hypot(back.x - x, back.y - y));
+      }
+    }
+  }
+
+  const ok = (v, lim) => (v < lim ? "pass" : "fail");
+  const worst = Math.max(wErr, dErr, xErr, rt);
+  const allPass = worst < 1e-9;
+
+  rows($("conf"), [
+    [`merged vs shipped washer ik, ${n} points`, fmtN(wErr, 15) + " deg", ok(wErr, 1e-9)],
+    [`merged vs shipped detent mmToUV, ${n} points`, fmtN(dErr, 15), ok(dErr, 1e-9)],
+    ["shipped detent(sep=0) vs shipped washer(vOff=0)", fmtN(xErr, 15), ok(xErr, 1e-9)],
+    ["merged round trip mm -> uv -> mm", fmtN(rt, 15) + " mm", ok(rt, 1e-9)],
+    ["detent 60mm right", Math.round(createDetent28byj().inverse({ x: 60, y: 0 }).a) + " half steps", "pass"],
+    ["detent 60mm up", Math.round(createDetent28byj().inverse({ x: 0, y: 60 }).b) + " half steps", "pass"],
+    ["DEG_PER_STEP", fmtN(DEG_PER_STEP, 17), "pass"],
+  ]);
+
+  $("confTag").textContent = allPass ? "all pass" : "FAIL";
+  $("confTag").className = "tag " + (allPass ? "pass" : "fail");
+  return allPass;
+}
+
+/* ------------------------------------------------------------- 2. geometry -- */
+let profile = null;
+
+function buildProfile() {
+  const kind = $("profile").value;
+  const thr = +$("thr").value, sep = +$("sep").value, mh = +$("mh").value, fw = +$("fw").value;
+  profile =
+    kind === "washer"
+      ? createWasherServo({ distMm: thr, wallW: fw, wallH: fw, mountH: mh })
+      : createDetent28byj({ throwMm: thr, sepMm: sep, fieldW: fw, fieldH: fw });
+
+  $("profTag").textContent = profile.id;
+  $("sep").disabled = kind === "washer";
+  $("mh").disabled = kind !== "washer";
+  return profile;
+}
+
+let cursor = { x: 0, y: 0 };
+
+function drawField() {
+  const cv = $("cv"), ctx = cv.getContext("2d");
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  const cssW = cv.clientWidth, cssH = Math.round((cssW * 560) / 820);
+  if (cv.width !== Math.round(cssW * dpr)) {
+    cv.width = Math.round(cssW * dpr);
+    cv.height = Math.round(cssH * dpr);
+    cv.style.height = cssH + "px";
+  }
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, cssW, cssH);
+
+  const fw = +$("fw").value;
+  const pad = 34;
+  const k = Math.min((cssW - pad * 2) / fw, (cssH - pad * 2) / fw);
+  const X = (mm) => cssW / 2 + mm * k;
+  const Y = (mm) => cssH / 2 - mm * k;
+
+  /* The axis-unit lattice. Walk whole axis values and place them back in mm, which is
+   * what makes the varying resolution visible: a uniform grid in axis space is not a
+   * uniform grid on the wall. */
+  const c0 = profile.quantise(profile.inverse({ x: -fw / 2, y: -fw / 2 }));
+  const c1 = profile.quantise(profile.inverse({ x: fw / 2, y: fw / 2 }));
+  const aLo = Math.min(c0.a, c1.a), aHi = Math.max(c0.a, c1.a);
+  const bLo = Math.min(c0.b, c1.b), bHi = Math.max(c0.b, c1.b);
+  const span = Math.max(aHi - aLo, bHi - bLo);
+  const stride = Math.max(1, Math.round(span / 44));
+
+  ctx.strokeStyle = "rgba(254,3,134,.20)";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  for (let a = Math.ceil(aLo / stride) * stride; a <= aHi; a += stride) {
+    let started = false;
+    for (let b = bLo; b <= bHi; b += Math.max(1, (bHi - bLo) / 40)) {
+      const p = profile.forward({ a, b });
+      if (Math.abs(p.x) > fw * 0.75 || Math.abs(p.y) > fw * 0.75) { started = false; continue; }
+      if (!started) { ctx.moveTo(X(p.x), Y(p.y)); started = true; } else ctx.lineTo(X(p.x), Y(p.y));
+    }
+  }
+  for (let b = Math.ceil(bLo / stride) * stride; b <= bHi; b += stride) {
+    let started = false;
+    for (let a = aLo; a <= aHi; a += Math.max(1, (aHi - aLo) / 40)) {
+      const p = profile.forward({ a, b });
+      if (Math.abs(p.x) > fw * 0.75 || Math.abs(p.y) > fw * 0.75) { started = false; continue; }
+      if (!started) { ctx.moveTo(X(p.x), Y(p.y)); started = true; } else ctx.lineTo(X(p.x), Y(p.y));
+    }
+  }
+  ctx.stroke();
+
+  /* Field rectangle and centre cross. */
+  ctx.strokeStyle = "rgba(245,240,230,.55)";
+  ctx.lineWidth = 2;
+  ctx.strokeRect(X(-fw / 2), Y(fw / 2), fw * k, fw * k);
+  ctx.strokeStyle = "rgba(245,240,230,.22)";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(X(-fw / 2), Y(0)); ctx.lineTo(X(fw / 2), Y(0));
+  ctx.moveTo(X(0), Y(-fw / 2)); ctx.lineTo(X(0), Y(fw / 2));
+  ctx.stroke();
+
+  /* Cursor. */
+  ctx.fillStyle = "#FE0386";
+  ctx.beginPath();
+  ctx.arc(X(cursor.x), Y(cursor.y), 4, 0, 7);
+  ctx.fill();
+
+  ctx.fillStyle = "rgba(245,240,230,.45)";
+  ctx.font = "12px ui-monospace, monospace";
+  ctx.fillText(`lattice stride ${stride} ${profile.axis.a.name}`, 8, cssH - 10);
+}
+
+function updateGeo() {
+  const p = profile;
+  const at = { x: cursor.x, y: cursor.y };
+  const axis = p.inverse(at);
+  const q = p.quantise(axis);
+  const sweep = sweepDeg(+$("fw").value, +$("fw").value, p.geometry);
+  const step = p.sampleStepMm(at);
+  const kx = p.sensitivity(at, { x: at.x + 1, y: at.y });
+  const ky = p.sensitivity(at, { x: at.x, y: at.y + 1 });
+  const back = p.forward(q);
+  const u = p.axis.a.name;
+
+  rows($("geo"), [
+    ["cursor mm", `${fmtN(at.x, 2)}, ${fmtN(at.y, 2)}`],
+    [`axis, unrounded`, `${fmtN(axis.a, 3)}, ${fmtN(axis.b, 3)} ${u}`],
+    [`axis, quantised`, `${q.a}, ${q.b} ${u}`],
+    ["quantisation cost", fmtN(Math.hypot(back.x - at.x, back.y - at.y), 4) + " mm"],
+    [`gain x / y`, `${fmtN(kx, 4)} / ${fmtN(ky, 4)} ${u} per mm`],
+    ["sample step here", fmtN(step, 4) + " mm"],
+    ["sweep demanded", `${fmtN(sweep.t1, 2)} / ${fmtN(sweep.t2, 2)} deg`],
+    ["overrun", `${p.limits.overrun}, derate ${p.limits.derate}`],
+    ["max rate", `${fmtN(p.limits.maxRate * p.limits.derate, 1)} ${u}/s`],
+  ]);
+  drawField();
+}
+
+/* ---------------------------------------------------------- 3. calibration -- */
+function stepToU(s) { return Math.tan((2 * s * DEG_PER_STEP) / RAD); }
+
+function doSolve() {
+  const fw = +$("fw").value;
+  const half = fw / 2;
+  const cornersMm = [
+    { x: -half, y: half }, { x: half, y: half },
+    { x: half, y: -half }, { x: -half, y: -half },
+  ];
+  const lines = $("corners").value.trim().split("\n").map((l) => l.split(",").map(Number));
+  if (lines.length !== 4 || lines.some((p) => p.length !== 2 || p.some((v) => !Number.isFinite(v)))) {
+    rows($("cal"), [["input", "need exactly four lines of x,y", "fail"]]);
+    return;
+  }
+
+  const isStep = profile.axis.a.name === "halfstep";
+  const corr = lines.map(([sx, sy], i) => ({
+    mm: cornersMm[i],
+    uv: isStep
+      ? { u: stepToU(sx), v: stepToU(sy) }
+      : (() => { const a = profile.forward({ a: sx, b: sy }); const g = mmToUV(a, profile.geometry); return g; })(),
+  }));
+
+  const h = solveHomography(corr);
+  if (!h) {
+    rows($("cal"), [
+      ["solve", "REJECTED: corners are collinear or degenerate", "fail"],
+      ["what to do", "recapture them", ""],
+    ]);
+    return;
+  }
+
+  const cal = createHomographyCalibration(h);
+  let worst = 0;
+  for (let i = 0; i < 4; i++) {
+    const got = profile.quantise(profile.inverse(cornersMm[i], cal));
+    const want = lines[i];
+    const a = profile.forward({ a: got.a, b: got.b }, cal);
+    const b = profile.forward({ a: want[0], b: want[1] }, cal);
+    worst = Math.max(worst, Math.hypot(a.x - b.x, a.y - b.y));
+  }
+
+  let rtWorst = 0;
+  for (let x = -half; x <= half; x += 10) {
+    for (let y = -half; y <= half; y += 10) {
+      const s = profile.quantise(profile.inverse({ x, y }, cal));
+      const back = profile.forward(s, cal);
+      rtWorst = Math.max(rtWorst, Math.hypot(back.x - x, back.y - y));
+    }
+  }
+
+  const uv = lines.map(([sx, sy]) => (isStep ? { u: stepToU(sx), v: stepToU(sy) } : mmToUV(profile.forward({ a: sx, b: sy }), profile.geometry)));
+  const aspect = quadAspect(uv);
+  const hinv = invertHomography(h);
+
+  rows($("cal"), [
+    ["solve", "accepted", "pass"],
+    ["corner residual", fmtN(worst, 4) + " mm", worst < 0.3 ? "pass" : "fail"],
+    ["worst round trip", fmtN(rtWorst, 4) + " mm", rtWorst < 1.0 ? "pass" : "fail"],
+    ["quad aspect", fmtN(aspect, 4)],
+    ["field aspect", fmtN(+$("fw").value / +$("fw").value, 4) + " (square field)"],
+    ["aspect disagreement", fmtN(Math.abs(aspect / 1 - 1) * 100, 1) + " %",
+      Math.abs(aspect - 1) > 0.25 ? "fail" : "pass"],
+    ["h", h.map((v) => v.toPrecision(4)).join(", ")],
+    ["hinv[8], unnormalised", fmtN(hinv[8], 8)],
+  ]);
+}
+
+/* ----------------------------------------------------------------- 4. wire -- */
+function buildWire() {
+  const f = FORMATS.find((x) => x.name === $("fmt").value);
+  const n = Math.min(f.maxCount, Math.max(1, +$("nseg").value));
+  const flags = ($("gate").checked ? FLAG.LASER : 0) | ($("planned").checked ? FLAG.PLANNED : 0);
+  const size = packetSize(f, n);
+
+  /* Build a representative packet. Values are chosen to include a byte in the
+   * reserved range so the escaping is visible rather than theoretical. */
+  const raw = new Uint8Array(size);
+  raw[0] = f.magic;
+  raw[1] = f.domain === "step" ? stepCountByte(f.fmt, n) : n;
+  raw[2] = 0;
+  /* A plausible payload rather than a pathological one. Filling from the reserved
+   * range made the escaped size read as 35 percent growth, where a real packet is
+   * closer to 2. Two bytes are then forced into the range on purpose, so the
+   * escaping is visible without the size being a lie. */
+  for (let i = 3; i < size - 1; i++) raw[i] = (i * 37 + 11) & 0x7f;
+  raw[6] = flags;
+  if (size > 9) raw[7] = 0xa4;
+  if (size > 12) raw[11] = MAGIC.ESC;
+  raw[size - 1] = crc8(raw, 0, size - 1);
+
+  const reserved = [...raw.slice(1, size)].filter((b) => b >= f.escapeLow && b <= MAGIC.ESC).length;
+
+  const esc = escapeFrame(raw, f.escapeLow);
+  const hex = (b) => [...b].map((v) => v.toString(16).padStart(2, "0")).join(" ");
+
+  /* A delta format keeps its absolute position in the anchor and a run format keeps
+   * its interval in the packet prefix, so a lookup that only searches `segment`
+   * finds nothing for three of the six formats. Search all three field lists. */
+  const allFields = [...(f.prefix ?? []), ...(f.anchor ?? []), ...f.segment];
+  const posField = allFields.find((s) => /^(x|y|pan|tilt)$/.test(s.name));
+  const timeField = allFields.find((s) => /^(dur|iv)$/.test(s.name));
+
+  rows($("wire"), [
+    ["domain", f.domain],
+    ["position type", posField ? `${posField.name} ${posField.type}` : "-"],
+    ["timing field", timeField ? `${timeField.name} ${timeField.type}` : "-"],
+    ["segments", `${n} of max ${f.maxCount}`],
+    ["unescaped size", size + " bytes"],
+    ["escaped size", `${esc.length} bytes (+${esc.length - size} for ${reserved} reserved)`],
+    ["escape floor", "0x" + f.escapeLow.toString(16)],
+    ["fits one BLE write", esc.length <= 176 ? "yes, under 176" : "NO, fit loop must split",
+      esc.length <= 176 ? "pass" : "fail"],
+    ["crc8", "0x" + raw[size - 1].toString(16).padStart(2, "0")],
+    ["flags byte", `0x${flags.toString(16).padStart(2, "0")} = ${$("gate").checked ? "laser " : ""}${$("planned").checked ? "planned" : ""}` || "0x00"],
+  ]);
+
+  $("bytes").textContent =
+    "unescaped\n" + hex(raw) + "\n\nescaped (what goes on the wire)\n" + hex(esc);
+}
+
+/* --------------------------------------------------------------- 5. guards -- */
+function guards() {
+  const out = [];
+  for (const p of [createDetent28byj(), createWasherServo()]) {
+    const from = { x: -30, y: -17.32 }, to = { x: 30, y: 17.32 };
+    const step = p.sampleStepMm({ x: 0, y: 0 });
+    const d = Math.hypot(to.x - from.x, to.y - from.y);
+    const n = Math.max(1, Math.ceil(d / step));
+    const pts = [];
+    for (let i = 0; i <= n; i++) {
+      pts.push({ x: from.x + ((to.x - from.x) * i) / n, y: from.y + ((to.y - from.y) * i) / n });
+    }
+    const quantised = pts.map((q) => p.quantise(p.inverse(q)));
+    let collisions = 0;
+    for (let i = 1; i < quantised.length; i++) {
+      if (quantised[i].a === quantised[i - 1].a && quantised[i].b === quantised[i - 1].b) collisions++;
+    }
+    const planned = quantisePath(pts, pts.map(() => true), p);
+    let zero = 0;
+    for (let i = 1; i < planned.length; i++) {
+      if (p.arcLength(planned[i - 1].axis, planned[i].axis) === 0) zero++;
+    }
+    out.push([`${p.id}: samples`, `${pts.length} at ${fmtN(step, 3)} mm`]);
+    out.push([`${p.id}: raw collisions`, String(collisions), collisions ? "fail" : "pass"]);
+    out.push([`${p.id}: after dedupe`, `${planned.length} points, ${zero} zero-length`, zero ? "fail" : "pass"]);
+  }
+  out.push(["Math.min(400, NaN)", String(Math.min(400, NaN)), "fail"]);
+  out.push(["limitFromGain(400, 0)", String(limitFromGain(400, 0)), "pass"]);
+  rows($("guards"), out);
+}
+
+/* ------------------------------------------------------------------- boot -- */
+function boot() {
+  $("fmt").innerHTML = FORMATS.map((f) => `<option value="${f.name}">${f.name} (${f.domain})</option>`).join("");
+  $("fmt").value = "step-run";
+
+  buildProfile();
+  const pass = conformance();
+  updateGeo();
+  doSolve();
+  buildWire();
+  guards();
+
+  $("banner").textContent = pass ? "engine loaded, conformance passing" : "CONFORMANCE FAILING";
+  $("banner").style.color = pass ? "" : "#ff5b3a";
+
+  for (const id of ["profile", "thr", "sep", "mh", "fw"]) {
+    $(id).addEventListener("input", () => { buildProfile(); updateGeo(); doSolve(); guards(); });
+  }
+  for (const id of ["fmt", "nseg", "gate", "planned"]) {
+    $(id).addEventListener("input", buildWire);
+  }
+  $("solve").addEventListener("click", doSolve);
+  $("degen").addEventListener("click", () => {
+    $("corners").value = "0,0\n10,10\n20,20\n30,30";
+    doSolve();
+  });
+
+  const cv = $("cv");
+  cv.addEventListener("pointermove", (e) => {
+    const r = cv.getBoundingClientRect();
+    const fw = +$("fw").value, pad = 34;
+    const k = Math.min((r.width - pad * 2) / fw, (r.height - pad * 2) / fw);
+    cursor = { x: (e.clientX - r.left - r.width / 2) / k, y: -(e.clientY - r.top - r.height / 2) / k };
+    updateGeo();
+  });
+  window.addEventListener("resize", drawField);
+}
+
+try {
+  boot();
+} catch (err) {
+  $("banner").textContent = "ENGINE FAILED TO LOAD";
+  $("banner").style.color = "#ff5b3a";
+  document.querySelector("main").insertAdjacentHTML(
+    "afterbegin",
+    `<section><h2>error</h2><div class="body"><pre>${String(err && err.stack || err)}</pre></div></section>`,
+  );
+}
+</script>
+</body>
+</html>

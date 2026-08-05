@@ -1,0 +1,24 @@
+node_modules/
+dist/
+build/
+coverage/
+*.tsbuildinfo
+
+.DS_Store
+Thumbs.db
+
+.vite/
+.turbo/
+playwright-report/
+test-results/
+
+# Arduino / PlatformIO
+.pio/
+firmware/**/build/
+
+# local scratch, never committed
+scratch/
+*.local
+.env
+.env.*
+!.env.example

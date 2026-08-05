@@ -1,0 +1,2241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DETENT</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Permanent+Marker&family=Special+Elite&family=VT323&family=IBM+Plex+Mono:wght@400;600;700&family=Libre+Baskerville:ital@1&display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+<style>
+:root{
+  --paper:#f5f0e6; --paper-dark:#e8e0d0; --paper-cream:#faf8f3;
+  --ink:#1a1a1a; --ink-2:#0a0a0a; --ink-light:#444; --ink-muted:#6b6b6b;
+  --pink:#FE0386; --pink-dark:#c40268; --pink-tint:rgba(254,3,134,.12);
+  --marker:"Permanent Marker",cursive;
+  --type:"Special Elite","Courier New",monospace;
+  --term:"VT323",ui-monospace,monospace;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+  --serif:"Libre Baskerville",Georgia,serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{background:var(--paper);color:var(--ink);font:12px/1.45 var(--mono);overflow:hidden}
+body::after{content:"";position:fixed;inset:0;z-index:9999;pointer-events:none;opacity:.075;
+  mix-blend-mode:multiply;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4'/%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23n)'/%3E%3C/svg%3E")}
+#app{display:flex;flex-direction:column;height:100%}
+
+/* ---- header ---- */
+header{display:flex;align-items:center;gap:11px;padding:0 12px;height:52px;flex:none;
+  background:var(--ink);border-bottom:3px solid var(--pink);color:var(--paper)}
+.mark{width:26px;height:26px;flex:none}
+.mark .arc{fill:var(--paper)}
+.mark .wr{fill:var(--pink)}
+.brand{font-family:var(--marker);font-size:21px;letter-spacing:.05em;line-height:1;color:var(--paper)}
+.brand i{color:var(--pink);font-style:normal}
+.wordmark{font-family:var(--mono);font-weight:700;font-size:10px;letter-spacing:.02em;
+  color:var(--paper);opacity:.55;margin-left:-4px}
+.wordmark b{color:var(--pink);font-weight:700}
+.spacer{flex:1}
+
+.chip{display:flex;gap:7px;align-items:baseline;padding:2px 9px;background:var(--ink-2);
+  border:2px solid #33302c;color:#8e8880;font-family:var(--term);font-size:16px;line-height:1.25}
+.chip b{color:var(--paper);font-weight:400}
+.dot{width:9px;height:9px;background:#3d3a36;align-self:center;border:1px solid #55504a}
+.dot.on{background:var(--pink);border-color:var(--pink)}
+.dot.hot{background:var(--pink);border-color:var(--paper);
+  animation:blip .9s steps(2,end) infinite}
+@keyframes blip{50%{opacity:.25}}
+
+/* ---- shell ---- */
+main{flex:1;display:flex;min-height:0}
+aside{width:288px;flex:none;background:var(--paper);overflow-y:auto;overflow-x:hidden}
+#left{border-right:2px solid var(--ink)}
+#right{border-left:2px solid var(--ink)}
+#stage{flex:1;display:flex;flex-direction:column;min-width:0;background:var(--paper-dark);
+  padding:12px;gap:12px}
+.viewwrap{flex:1;position:relative;min-height:0;background:var(--ink);
+  border:2px solid var(--ink);box-shadow:5px 5px 0 0 var(--pink)}
+canvas{display:block;width:100%;height:100%}
+#rigwrap{height:236px;flex:none;position:relative;background:var(--ink);
+  border:2px solid var(--ink);box-shadow:5px 5px 0 0 var(--ink-light)}
+.vlabel{position:absolute;top:0;left:0;font-family:var(--mono);font-weight:700;font-size:9px;
+  letter-spacing:.2em;color:var(--ink);background:var(--pink);padding:3px 9px;pointer-events:none}
+#clipWarn{position:absolute;top:8px;right:10px;background:var(--pink);color:var(--paper);
+  font:700 10px var(--mono);letter-spacing:.15em;padding:4px 9px;display:none;z-index:5}
+.vhint{position:absolute;bottom:6px;left:9px;font-family:var(--type);font-size:10px;
+  color:#6f6a64;pointer-events:none}
+
+/* ---- panels ---- */
+.grp{border-bottom:2px solid var(--ink)}
+.grp>h3{font-family:var(--marker);font-size:14px;letter-spacing:.02em;color:var(--ink);
+  padding:9px 12px 6px;background:var(--paper-dark);cursor:pointer;
+  display:flex;justify-content:space-between;align-items:center;user-select:none}
+.grp>h3::after{font-family:"Font Awesome 6 Free";font-weight:900;content:"\f068";
+  font-size:9px;color:var(--pink)}
+.grp.collapsed>h3::after{content:"\f067"}
+.grp.collapsed .body{display:none}
+.body{padding:11px 12px 14px;display:flex;flex-direction:column;gap:9px}
+
+label.row{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:10px;
+  color:var(--ink-light);letter-spacing:.02em}
+label.row>span{flex:1}
+input[type=number],input[type=text],select,textarea{
+  background:var(--paper-cream);border:2px solid var(--ink);color:var(--ink);
+  font:15px/1 var(--term);padding:4px 7px;width:86px;border-radius:0}
+input[type=text],textarea,select{width:100%}
+select{font:11px/1.3 var(--mono);padding:6px}
+textarea{font:13px/1.5 var(--mono);resize:vertical;min-height:56px}
+input:focus,select:focus,textarea:focus{outline:0;border-color:var(--pink);
+  box-shadow:3px 3px 0 0 var(--pink)}
+input[type=file]{font:10px var(--mono);width:100%;color:var(--ink)}
+input[type=range]{width:100%;accent-color:var(--pink);background:transparent;height:18px}
+input[type=checkbox]{accent-color:var(--pink);width:15px;height:15px}
+
+button{background:var(--paper-cream);border:2px solid var(--ink);color:var(--ink);
+  font:10px var(--mono);font-weight:700;letter-spacing:.11em;padding:7px 9px;
+  border-radius:0;cursor:pointer;box-shadow:3px 3px 0 0 var(--ink);
+  display:inline-flex;align-items:center;justify-content:center;gap:6px}
+button i{font-size:10px;color:var(--pink)}
+button:hover:not(:disabled){background:var(--pink);color:var(--paper)}
+button:hover:not(:disabled) i{color:var(--paper)}
+button:active:not(:disabled){transform:translate(3px,3px);box-shadow:0 0 0 0 var(--ink)}
+button:disabled{opacity:.4;cursor:not-allowed;box-shadow:none}
+button.pri{background:var(--pink);color:var(--paper)}
+button.pri i{color:var(--paper)}
+button.pri:hover{background:var(--ink)}
+button.danger{background:var(--ink);color:var(--paper)}
+button.danger i{color:var(--pink)}
+button.act{background:var(--ink);color:var(--paper)}
+button.act i{color:var(--pink)}
+.btnrow{display:flex;gap:9px;flex-wrap:wrap}
+.btnrow>button{flex:1;min-width:66px}
+.seg{display:flex;gap:9px}
+.seg button{flex:1}
+
+.note{font-family:var(--type);font-size:11px;line-height:1.5;color:var(--ink-muted);
+  border-left:4px solid var(--pink);padding-left:8px}
+.kv{display:flex;justify-content:space-between;align-items:baseline;
+  font-family:var(--mono);font-size:10px;color:var(--ink-light);
+  border-bottom:1px dashed #cdc5b4;padding-bottom:2px}
+.kv b{font-family:var(--term);font-size:17px;font-weight:400;color:var(--ink);line-height:1}
+.kv b.hot{color:var(--pink)}
+.cgrid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.cbtn{flex-direction:column;gap:2px;padding:8px 4px;line-height:1.2}
+.cbtn b{font-family:var(--term);font-size:15px;font-weight:400;letter-spacing:0}
+.cbtn.armed{background:var(--ink);color:var(--paper)}
+.cbtn.armed b{color:var(--pink)}
+.cbtn.set{border-color:var(--pink)}
+.jog{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}
+.jog button{padding:9px 0}
+.jog .blank{visibility:hidden}
+
+/* ---- console ---- */
+footer{flex:none;height:118px;border-top:3px solid var(--pink);background:var(--ink);
+  display:flex;flex-direction:column}
+.logbar{display:flex;align-items:center;gap:10px;padding:3px 10px;
+  border-bottom:1px solid #2e2b28;font-family:var(--mono);font-weight:700;
+  font-size:9px;letter-spacing:.2em;color:#7d7770}
+.tagline{font-family:var(--serif);font-style:italic;font-size:11px;letter-spacing:0;
+  text-transform:none;color:#6a645d}
+.logbar button{background:transparent;border:2px solid #3a3733;color:#8e8880;
+  box-shadow:none;padding:2px 8px}
+.logbar button:hover{background:var(--pink);color:var(--paper);border-color:var(--pink)}
+#log{flex:1;overflow-y:auto;padding:5px 10px;font-family:var(--term);font-size:15px;
+  line-height:1.32;color:#8e8880;white-space:pre-wrap}
+#log .tx{color:var(--pink)}
+#log .rx{color:#8e8880}
+#log .er{color:#ff5b3a}
+#log .sy{color:var(--paper)}
+
+#manual{position:fixed;inset:0;background:rgba(10,10,10,.55);z-index:200;display:none;
+  align-items:flex-start;justify-content:center;overflow:auto;padding:30px 14px}
+#manual.open{display:flex}
+.mcard{background:var(--paper);border:3px solid var(--ink);box-shadow:8px 8px 0 0 var(--pink);
+  max-width:680px;width:100%;padding:22px 26px 26px;font-family:var(--type);
+  font-size:12.5px;line-height:1.62;color:var(--ink);position:relative}
+.mcard h2{font-family:var(--marker);font-size:21px;margin:16px 0 5px}
+.mcard h2:first-of-type{margin-top:0}
+.mcard code{font-family:var(--mono);background:var(--paper-dark);padding:0 4px;font-size:11px}
+.mcard ol{margin:4px 0 8px 22px}
+.mcard li{margin-bottom:3px}
+.mcard .mclose{position:absolute;top:10px;right:10px}
+@media(max-width:1140px){
+  main{flex-direction:column;overflow-y:auto}
+  aside{width:100%;max-height:none;overflow:visible}
+  #stage{height:74vh;flex:none}
+  header{height:auto;flex-wrap:wrap;padding:8px 12px;gap:8px}
+}
+</style>
+</head>
+<body>
+<div id="app">
+
+<header>
+  <svg class="mark" viewBox="117 103 800 800" aria-hidden="true">
+    <path class="arc" transform="translate(490,121)" d="m0 0h38l34 3 29 5 25 6 26 8 21 8 20 9 20 10 23 14 19 13 12 10 11 9 16 15 9 9 7 8 9 10 15 20 18 27 13 23 13 28 10 26 8 26 6 27 4 27 2 25v29l-2 28-5 32-6 27-8 27-10 25-12 25-10 17-13 19-10 13-11 13-7 8-9 10-20 20-8 7-15 13-16 12-19 13-13 8-18 10-27 13-29 11-24 7-24 5-27 4-24 2h-25l-27-3-20-4-16-5-12-6-8-7-7-10-4-8-2-10v-13l4-13 7-12 11-11 14-8 12-3h16l24 3 23 1 25-1 22-3 30-7 18-6 25-11 22-12 21-14 10-8 13-11 13-13 9-11 10-13 10-15 12-22 9-20 10-30 6-27 3-19 2-26v-20l-3-29-6-26-8-24-8-18-11-21-14-21-11-14-9-10-7-8-16-16-11-9-15-12-17-11-14-8-16-8-14-6-24-8-22-5-21-3-12-1h-37l-25 3-20 4-20 6-21 8-24 12-19 12-12 9-11 9-10 9-17 17-9 11-14 19-11 18-11 21-10 26-6 21-4 19-2 15-1 14v25l2 22 3 20v10l-4 16-7 11-6 7-13 9-13 5-5 1h-14l-12-3-12-6-10-9-6-7-7-14-4-18-3-26-1-16v-36l3-30 5-28 8-29 11-29 13-28 14-24 14-21 10-14 13-16 12-14 30-30 11-9 15-12 24-16 21-12 23-11 27-10 23-7 27-6 27-4z"/>
+    <path class="wr" transform="translate(498,314)" d="m0 0h25l14 3 6 4 3 4 1 8-4 8-11 10-20 16-14 12-14 14-10 14-8 16-4 15-1 6v20l4 18 5 13 6 11 9 12 6 7 11 9 14 9 16 7 16 4 8 1h15l16-3 16-6 14-8 13-10 13-12 9-9 2-3h2l2-4 11-12 7-9 5-4 9-2 9 3 6 7 2 5 1 9-3 25-5 23-7 21-13 27-10 15-8 10-9 10-12 12-14 11-18 11-23 11-19 6-23 5-21 2h-17l-23-2-14-2h-19l-16 4-12 7-10 8-63 63-9 8-13 8-13 6-11 3h-20l-15-4-17-9-11-9-9-11-7-15-2-10v-16l3-13 6-11 11-14 16-16 7-8 69-69 6-9 4-13-1-9-7-24-3-21v-31l3-22 6-21 7-17 11-19 10-13 11-12 13-13 16-12 16-10 19-10 19-7 19-5z"/>
+  </svg>
+  <div class="brand">DETENT<i>.</i></div>
+  <div class="wordmark">hack<b>.build</b></div>
+  <div class="chip"><span class="dot" id="dLink"></span><span>LINK</span><b id="vLink">offline</b></div>
+  <div class="chip"><span class="dot" id="dLaser"></span><span>BEAM</span></div>
+  <div class="chip"><span>POS</span><b id="vPos">0, 0</b></div>
+  <div class="chip"><span>Q</span><b id="vQ">0</b></div>
+  <div class="spacer"></div>
+  <div class="btnrow" style="gap:9px">
+    <button id="bSerial"><i class="fa-solid fa-plug"></i>USB</button>
+    <button id="bBle"><i class="fa-brands fa-bluetooth-b"></i>BLE</button>
+    <button id="bHelp"><i class="fa-solid fa-circle-question"></i>MANUAL</button>
+    <button id="bStop" class="danger"><i class="fa-solid fa-hand"></i>STOP</button>
+  </div>
+</header>
+
+<main>
+<aside id="left">
+
+  <div class="grp"><h3>RIG GEOMETRY</h3><div class="body">
+    <label class="row"><span>throw d (mm)</span><input type="number" id="gThrow" value="150" step="1"></label>
+    <label class="row"><span>mirror sep e (mm)</span><input type="number" id="gSep" value="22" step="0.5"></label>
+    <label class="row"><span>field w (mm)</span><input type="number" id="gW" value="120" step="1"></label>
+    <label class="row"><span>field h (mm)</span><input type="number" id="gH" value="120" step="1"></label>
+    <div class="kv"><span>deg per half-step</span><b>0.088327</b></div>
+    <div class="kv"><span>beam deg per step</span><b>0.176653</b></div>
+    <div class="kv"><span>mm per step at d</span><b id="vMmStep">0.46</b></div>
+    <div class="kv"><span>field needs</span><b id="vFieldSteps">0 x 0</b></div>
+    <p class="note">Resolution is fixed by the gearbox. ULN2003 has no current control,
+      so half-step is the floor and there is no microstepping to reach for.</p>
+  </div></div>
+
+  <div class="grp"><h3>MOTION</h3><div class="body">
+    <label class="row"><span>draw rate (steps/s)</span><input type="number" id="mRate" value="700" step="25"></label>
+    <label class="row"><span>travel rate</span><input type="number" id="mTravel" value="900" step="25"></label>
+    <label class="row"><span>accel (steps/s2)</span><input type="number" id="mAccel" value="3000" step="100"></label>
+    <label class="row"><span>lash comp X (steps)</span><input type="number" id="mLashX" value="0" step="1"></label>
+    <label class="row"><span>lash comp Y (steps)</span><input type="number" id="mLashY" value="0" step="1"></label>
+    <label class="row"><span>measured slack X</span><input type="number" id="mSlackX" value="0" step="1"></label>
+    <label class="row"><span>measured slack Y</span><input type="number" id="mSlackY" value="0" step="1"></label>
+    <label class="row"><span>invert X</span><input type="checkbox" id="mInvX"></label>
+    <label class="row"><span>invert Y</span><input type="checkbox" id="mInvY"></label>
+    <label class="row"><span>hold coils when idle</span><input type="checkbox" id="mHold"></label>
+    <div class="btnrow">
+      <button id="bPushCfg"><i class="fa-solid fa-upload"></i>SEND</button>
+      <button id="bPull"><i class="fa-solid fa-download"></i>ADOPT</button>
+      <button id="bSaveCfg"><i class="fa-solid fa-floppy-disk"></i>PERSIST</button>
+    </div>
+    <p class="note">Comp is what the board applies. Slack is what the gearbox
+      actually has, measured with the backlash gauge. The preview shows what those
+      two disagreeing looks like on the wall.</p>
+    <p class="note">Above ~1000 steps/s a 28BYJ-48 starts skipping. Find the real
+      ceiling with the ramp test before trusting a fast rate.</p>
+  </div></div>
+
+  <div class="grp"><h3>JOG AND HOME</h3><div class="body">
+    <label class="row"><span>jog size (steps)</span><input type="number" id="jStep" value="10" step="1"></label>
+    <div class="jog">
+      <span class="blank"></span><button data-jog="0,1">Y+</button><span class="blank"></span>
+      <button data-jog="-1,0">X-</button><button id="bHome"><i class="fa-solid fa-crosshairs"></i></button><button data-jog="1,0">X+</button>
+      <span class="blank"></span><button data-jog="0,-1">Y-</button><span class="blank"></span>
+    </div>
+    <div class="btnrow">
+      <button id="bLaser"><i class="fa-solid fa-bolt"></i>BEAM ON</button>
+      <button id="bRelease"><i class="fa-solid fa-power-off"></i>RELEASE</button>
+    </div>
+    <p class="note">Drag on the target view to steer the beam live. Hold shift while
+      dragging to keep the beam on.</p>
+  </div></div>
+
+  <div class="grp"><h3>LIMITS</h3><div class="body">
+    <label class="row"><span>enforce limits</span><input type="checkbox" id="limOn"></label>
+    <label class="row"><span>min X</span><input type="number" id="limMinX" value="-2000" step="1"></label>
+    <label class="row"><span>max X</span><input type="number" id="limMaxX" value="2000" step="1"></label>
+    <label class="row"><span>min Y</span><input type="number" id="limMinY" value="-2000" step="1"></label>
+    <label class="row"><span>max Y</span><input type="number" id="limMaxY" value="2000" step="1"></label>
+    <div class="btnrow">
+      <button id="bLimFromCorners"><i class="fa-solid fa-expand"></i>FROM CORNERS</button>
+      <button id="bLimSend"><i class="fa-solid fa-upload"></i>SEND</button>
+    </div>
+    <div class="kv"><span>beam cone</span><b id="vCone">free</b></div>
+    <p class="note">Leave this off while you are finding the edges. Nothing clamps
+      until you turn it on, and the corner capture sets sane values for you.</p>
+  </div></div>
+
+  <div class="grp"><h3>FOUR CORNERS</h3><div class="body">
+    <p class="note">Steer the beam to each physical corner of your target area,
+      then capture it. Four points is enough to solve for rotation, keystone from
+      an off-axis mount, and a wrong throw guess all at once.</p>
+    <div class="cgrid">
+      <button class="cbtn" data-corner="0">TL<b id="c0">--</b></button>
+      <button class="cbtn" data-corner="1">TR<b id="c1">--</b></button>
+      <button class="cbtn" data-corner="3">BL<b id="c3">--</b></button>
+      <button class="cbtn" data-corner="2">BR<b id="c2">--</b></button>
+    </div>
+    <div class="btnrow">
+      <button id="bCapture" class="pri"><i class="fa-solid fa-crosshairs"></i>CAPTURE</button>
+      <button id="bGoto"><i class="fa-solid fa-location-arrow"></i>GO TO</button>
+    </div>
+    <div class="btnrow">
+      <button id="bSolve"><i class="fa-solid fa-calculator"></i>SOLVE</button>
+      <button id="bClearCal"><i class="fa-solid fa-eraser"></i>CLEAR</button>
+    </div>
+    <div class="kv"><span>armed corner</span><b id="vArmed">TL</b></div>
+    <div class="kv"><span>mapping</span><b id="vMap">ideal</b></div>
+    <div class="kv"><span>fit residual</span><b id="vResid">--</b></div>
+    <div class="kv"><span>quad aspect w:h</span><b id="vAspect">--</b></div>
+    <div class="btnrow">
+      <button id="bFitH"><i class="fa-solid fa-ruler-combined"></i>FIT FIELD H TO QUAD</button>
+    </div>
+  </div></div>
+
+  <div class="grp collapsed"><h3>TEST PATTERNS</h3><div class="body">
+    <div class="btnrow">
+      <button data-cal="lash"><i class="fa-solid fa-arrows-left-right"></i>LASH</button>
+      <button data-cal="ruler"><i class="fa-solid fa-ruler"></i>RULER</button>
+    </div>
+    <div class="btnrow">
+      <button data-cal="square"><i class="fa-solid fa-vector-square"></i>SQUARE</button>
+      <button id="bHunt"><i class="fa-solid fa-crosshairs"></i>STALL HUNT</button>
+    </div>
+    <p class="note">Backlash gauge draws the same line left-to-right then
+      right-to-left. Measure the gap between the two traces, divide by the
+      mm-per-step figure above, and that is your lash value in steps.</p>
+  </div></div>
+
+  </aside>
+
+<section id="stage">
+  <div class="viewwrap">
+    <canvas id="target"></canvas>
+    <div class="vlabel">TARGET PLANE</div>
+    <div id="clipWarn">CLIPPING AT LIMITS</div>
+    <div class="vhint" id="tHint">drag to steer &middot; shift-drag to draw &middot; right-drag to pan &middot; double-click to reset</div>
+  </div>
+  <div id="rigwrap">
+    <canvas id="rig"></canvas>
+    <div class="vlabel">SCANNER</div>
+  </div>
+</section>
+
+<aside id="right">
+
+  <div class="grp"><h3>CONTENT</h3><div class="body">
+    <select id="srcKind">
+      <optgroup label="vector 3d">
+        <option value="cube">rotating cube</option>
+        <option value="tesseract">tesseract</option>
+        <option value="ico">icosahedron</option>
+        <option value="knot">torus knot</option>
+        <option value="sphere">wireframe sphere</option>
+        <option value="lissa">lissajous 3d</option>
+      </optgroup>
+      <optgroup label="2d">
+        <option value="text">text</option>
+        <option value="circle">circle</option>
+        <option value="star">star</option>
+        <option value="spiral">spiral</option>
+        <option value="grid">grid</option>
+      </optgroup>
+      <optgroup label="input">
+        <option value="sketch">sketch pad</option>
+        <option value="image">image raster</option>
+        <option value="svg">svg file</option>
+      </optgroup>
+    </select>
+
+    <div id="pText" style="display:none">
+      <textarea id="txt">DETENT</textarea>
+    </div>
+
+    <div id="pSketch" style="display:none">
+      <p class="note">Draw on the target view. Plain drag records and aims.
+        Hold shift while dragging to fire the beam live as you draw.
+        Everything you draw stays as strokes you can PLOT.</p>
+      <div class="btnrow">
+        <button id="bSketchUndo"><i class="fa-solid fa-rotate-left"></i>UNDO</button>
+        <button id="bSketchClear"><i class="fa-solid fa-eraser"></i>CLEAR</button>
+      </div>
+      <div class="kv"><span>recorded strokes</span><b id="vSketchN">0</b></div>
+    </div>
+
+    <div id="pImg" style="display:none">
+      <input type="file" id="imgFile" accept="image/*">
+      <label class="row"><span>threshold</span><input type="range" id="imgThr" min="10" max="245" value="128"></label>
+      <label class="row"><span>row pitch (steps)</span><input type="range" id="imgPitch" min="1" max="6" value="2"></label>
+      <label class="row"><span>invert (draw light)</span><input type="checkbox" id="imgInv"></label>
+      <p class="note">Dark pixels become dashes on serpentine rows at step
+        resolution. Row pitch trades runtime for density. Reordering is off for
+        raster so the rows stay serpentine.</p>
+    </div>
+
+    <div id="pSvg" style="display:none">
+      <input type="file" id="svgFile" accept=".svg,image/svg+xml">
+      <p class="note">Paths, shapes, groups, and transforms are flattened to
+        polylines at the curve tolerance below. Fills are ignored, outlines
+        plot.</p>
+    </div>
+
+    <div id="p3d">
+      <label class="row"><span>yaw</span><input type="range" id="rYaw" min="0" max="360" value="35"></label>
+      <label class="row"><span>pitch</span><input type="range" id="rPitch" min="0" max="360" value="28"></label>
+      <label class="row"><span>roll</span><input type="range" id="rRoll" min="0" max="360" value="0"></label>
+      <label class="row"><span>camera dist</span><input type="range" id="rCam" min="180" max="900" value="380"></label>
+      <label class="row"><span>detail</span><input type="range" id="rDetail" min="1" max="5" value="3"></label>
+      <label class="row"><span>spin</span><input type="checkbox" id="cSpin"></label>
+    </div>
+
+    <label class="row"><span>scale %</span><input type="range" id="rScale" min="10" max="100" value="72"></label>
+    <label class="row"><span>curve tolerance</span><input type="range" id="rTol" min="1" max="20" value="6"></label>
+  </div></div>
+
+  <div class="grp"><h3>PATH</h3><div class="body">
+    <label class="row"><span>speed planner</span><input type="checkbox" id="oPlan" checked></label>
+    <label class="row"><span>reorder for travel</span><input type="checkbox" id="oOpt" checked></label>
+    <label class="row"><span>unidirectional approach</span><input type="checkbox" id="oUni"></label>
+    <label class="row"><span>show ideal overlay</span><input type="checkbox" id="oIdeal" checked></label>
+    <label class="row"><span>show step grid</span><input type="checkbox" id="oGrid"></label>
+    <div class="kv"><span>strokes</span><b id="vStrokes">0</b></div>
+    <div class="kv"><span>step points</span><b id="vPts">0</b></div>
+    <div class="kv"><span>draw steps</span><b id="vDraw">0</b></div>
+    <div class="kv"><span>travel steps</span><b id="vTrav">0</b></div>
+    <div class="kv"><span>est. runtime</span><b id="vTime">--</b></div>
+    <div class="kv"><span>out of bounds</span><b id="vOob">no</b></div>
+    <div class="kv"><span>lash distortion</span><b id="vLashErr">0.00 mm</b></div>
+  </div></div>
+
+  <div class="grp"><h3>RUN</h3><div class="body">
+    <div class="seg">
+      <button id="bPreview" class="act"><i class="fa-solid fa-eye"></i>PREVIEW</button>
+      <button id="bAnimate"><i class="fa-solid fa-rotate"></i>ANIMATE</button>
+    </div>
+    <div class="btnrow">
+      <button id="bPlot" class="pri"><i class="fa-solid fa-play"></i>PLOT</button>
+      <button id="bLoop"><i class="fa-solid fa-repeat"></i>LOOP</button>
+    </div>
+    <div class="kv"><span>window free</span><b id="vFree">--</b></div>
+    <div class="kv"><span>sent</span><b id="vSent">0</b></div>
+    <p class="note">Frames plot one at a time. A cube frame is a few seconds of
+      motion, so LOOP is a slow flipbook, not animation.</p>
+  </div></div>
+
+</aside>
+</main>
+
+<div id="manual"><div class="mcard">
+  <button class="mclose" id="bHelpClose"><i class="fa-solid fa-xmark"></i></button>
+  <h2>quickstart</h2>
+  <ol>
+    <li>Connect over USB or BLE. The app adopts whatever the board has saved, so a page reload costs you nothing.</li>
+    <li>Leave limits OFF. Set invert so jog moves the beam the way you expect. Invert changes the motor, not the preview.</li>
+    <li>Beam on, steer to each corner of your real target area, CAPTURE each one in order TL TR BR BL.</li>
+    <li>SOLVE. Residual under about 0.3 mm means a clean capture. If the app warns about aspect, press FIT FIELD H.</li>
+    <li>FROM CORNERS, then enforce limits. PERSIST writes everything to the board so it survives power cycles.</li>
+  </ol>
+  <h2>what the settings mean</h2>
+  <p>throw is the distance from the Y mirror to the wall along the beam. mirror sep is between the two mirror pivots. field w and h are the real size of your target rectangle in mm, and content is laid out inside that rectangle, so if the field lies about its shape your drawing squashes or clips to match. draw and travel rates are half steps per second with beam on and off. lash comp is what the board inserts at each direction reversal; measured slack is what your gearbox really has, and the preview shows what any mismatch will look like on the wall. hold coils keeps the motors energized when idle, which holds position at the cost of warm motors.</p>
+  <h2>the case aperture</h2>
+  <p>Beam deflection is 0.1766 degrees per step, so at limits spanning N steps the cone is N x 0.1766 degrees wide. A window at distance d mm from the Y mirror must be at least 2 d tan(half angle) wide plus beam diameter. Cheaper than reprinting: capture your corners inside the clear opening and let FROM CORNERS make the limits your software aperture. The beam cone readout in LIMITS shows what the current values allow.</p>
+  <h2>pushing speed</h2>
+  <p>With the planner on, the draw and travel rates are ceilings for straights, not a constant. The planner decelerates into every corner and reversal and accelerates out, so raise the rates until STALL HUNT says stop, not until a square looks bad. Accel controls how hard it brakes: higher finishes faster but skips sooner. The hunt blinks the beam at home before each pass; mark that spot, and the first rate whose blink returns somewhere else is past your motor's pull-out. Set the draw rate to about seventy percent of the last clean rate.</p>
+  <h2>drift</h2>
+  <p>These motors are open loop, so a skipped step is forever. The firmware ramps out of every stop and every direction reversal, takes up backlash at the slow rate, and settles the coils before moving after an idle release. If it still walks, your rates are past what your units can pull: run the RAMP test pattern, listen for where it stalls, and set the draw rate to about sixty percent of that. Re zero with the ZERO button at a marked reference when needed.</p>
+  <h2>beam safety</h2>
+  <p>The board kills the beam five seconds after the host goes silent with nothing queued, and on any BLE disconnect. Shift drag fires the beam live; releasing shift before the pointer keeps it on until pointer up, which is deliberate, so watch your hand. STOP always flushes the queue and drops the beam.</p>
+  <h2>sources</h2>
+  <p>sketch pad records what you draw on the target view as strokes you can plot; shift makes it draw live. image raster converts dark pixels to serpentine dashes at step resolution. svg file flattens paths, shapes, and transforms at the curve tolerance. All three go through the same planner, preview, and limits as everything else.</p>
+</div></div>
+
+<footer>
+  <div class="logbar"><span>CONSOLE</span>
+    <span class="tagline">make things. break things. repeat.</span>
+    <span class="spacer" style="flex:1"></span>
+    <button id="bClear">CLEAR</button></div>
+  <div id="log"></div>
+</footer>
+</div>
+
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+const DEG = Math.PI / 180;
+
+// hack.build palette, used for canvas painting where CSS vars cannot reach
+const C = {
+  ink:"#1a1a1a", ink2:"#0a0a0a", paper:"#f5f0e6", pink:"#FE0386",
+  rule:"rgba(245,240,230,.20)", faint:"rgba(245,240,230,.09)",
+  ghost:"rgba(245,240,230,.38)", lattice:"rgba(254,3,134,.14)",
+  travel:"rgba(245,240,230,.17)", dim:"#5e574f"
+};
+const UIFONT = () => "13px 'VT323', ui-monospace, monospace";
+const VIEWPAD = 38;
+
+// ---------------------------------------------------------------- constants
+// 28BYJ-48: 8 half-steps per electrical rev, 63.68395:1 gear train.
+const STEPS_PER_REV = 4075.7728;
+const DEG_PER_STEP  = 360 / STEPS_PER_REV;
+
+// ---------------------------------------------------------------- state
+const S = {
+  throw: 150, sep: 22, W: 120, H: 120,
+  limOn: false, limMinX: -2000, limMaxX: 2000, limMinY: -2000, limMaxY: 2000,
+  corners: [null, null, null, null],   // captured step positions, TL TR BR BL
+  armed: 0, hom: null, homInv: null, resid: 0, quadAspect: 0,
+  sketch: [], sketchLive: null, img: null, svgStrokes: null, noReorder: false,
+  rate: 400, travel: 500, lashX: 0, lashY: 0, slackX: 0, slackY: 0,
+  invX: false, invY: false,
+  strokes: [],          // ideal polylines, mm
+  cmds: [],             // {x,y,l} in steps
+  sim: [],              // physical path after backlash, steps
+  posX: 0, posY: 0, laser: false,
+  connected: false, transport: null,
+  free: 255, sent: 0, plotting: false, looping: false,
+  animT: 0, animOn: false,
+  view: { cx: 0, cy: 0, zoom: 1 },
+  rigSpin: 0
+};
+
+// ---------------------------------------------------------------- kinematics
+// Everything runs through (u, v) = (tan 2thetaX, tan 2thetaY). The ideal model
+// is near-linear in target mm in that space, which is what lets a four-corner
+// homography absorb real error. Inversion is NOT applied here any more: it is a
+// wiring correction that lives in the firmware phase table, so the preview and
+// the wall agree once it is set correctly.
+const RAD = Math.PI / 180;
+function stepToU(st) { return Math.tan(2 * st * DEG_PER_STEP * RAD); }
+function uToStep(u)  { return Math.atan(u) / 2 / RAD / DEG_PER_STEP; }
+
+function mmToUV(x, y) {
+  if (S.hom) {
+    const h = S.hom;
+    let w = h[6]*x + h[7]*y + 1;
+    if (Math.abs(w) < 1e-9) w = 1e-9;
+    return [(h[0]*x + h[1]*y + h[2]) / w, (h[3]*x + h[4]*y + h[5]) / w];
+  }
+  const a = Math.atan2(x, S.throw + S.sep);
+  return [Math.tan(a), (y * Math.cos(a)) / S.throw];
+}
+function uvToMm(u, v) {
+  if (S.homInv) {
+    const g = S.homInv;
+    let w = g[6]*u + g[7]*v + g[8];
+    if (Math.abs(w) < 1e-12) w = 1e-12;
+    return [(g[0]*u + g[1]*v + g[2]) / w, (g[3]*u + g[4]*v + g[5]) / w];
+  }
+  const a = Math.atan(u);
+  return [(S.throw + S.sep) * u, S.throw * v / Math.cos(a)];
+}
+function mmToSteps(x, y) {
+  const [u, v] = mmToUV(x, y);
+  return [Math.round(uToStep(u)), Math.round(uToStep(v))];
+}
+function stepsToMm(sx, sy) {
+  return uvToMm(stepToU(sx), stepToU(sy));
+}
+
+// Solve the 8 unknowns of a projective map from four mm/uv correspondences.
+// Plain Gaussian elimination with partial pivoting; an 8x8 is nothing.
+function solveH(pts) {
+  const A = [], b = [];
+  for (const [x, y, u, v] of pts) {
+    A.push([x, y, 1, 0, 0, 0, -u*x, -u*y]); b.push(u);
+    A.push([0, 0, 0, x, y, 1, -v*x, -v*y]); b.push(v);
+  }
+  const n = 8;
+  for (let c = 0; c < n; c++) {
+    let piv = c;
+    for (let r = c + 1; r < n; r++) if (Math.abs(A[r][c]) > Math.abs(A[piv][c])) piv = r;
+    if (Math.abs(A[piv][c]) < 1e-14) return null;      // degenerate, corners collinear
+    [A[c], A[piv]] = [A[piv], A[c]]; [b[c], b[piv]] = [b[piv], b[c]];
+    for (let r = 0; r < n; r++) {
+      if (r === c) continue;
+      const f = A[r][c] / A[c][c];
+      if (!f) continue;
+      for (let k = c; k < n; k++) A[r][k] -= f * A[c][k];
+      b[r] -= f * b[c];
+    }
+  }
+  return b.map((v, i) => v / A[i][i]);
+}
+function invertH(h) {
+  const [a,bb,c,d,e,f,g,hh] = h, i = 1;
+  return [ (e*i-f*hh), -(bb*i-c*hh),  (bb*f-c*e),
+          -(d*i-f*g),   (a*i-c*g),   -(a*f-c*d),
+           (d*hh-e*g), -(a*hh-bb*g),  (a*e-bb*d) ];
+}
+
+// Target-plane mm for each corner, in capture order TL TR BR BL.
+function cornerMm(i) {
+  const w = S.W / 2, h = S.H / 2;
+  return [[-w, h], [w, h], [w, -h], [-w, -h]][i];
+}
+
+function mmPerStep() {
+  const [x0] = stepsToMm(0, 0), [x1] = stepsToMm(1, 0);
+  return Math.abs(x1 - x0);
+}
+
+// ---------------------------------------------------------------- stroke font
+// Single-stroke glyphs on a 0..10 x 0..14 box. Quadratics stay quadratic and get
+// flattened adaptively, so round letters do not turn into chords.
+const GLYPH = {
+  "A":"M0,0L5,14L10,0M2,5L8,5",
+  "B":"M0,0L0,14L6,14Q10,14 10,10.5Q10,7 6,7L0,7M6,7Q10,7 10,3.5Q10,0 6,0L0,0",
+  "C":"M10,3Q10,0 5,0Q0,0 0,7Q0,14 5,14Q10,14 10,11",
+  "D":"M0,0L0,14L5,14Q10,14 10,7Q10,0 5,0L0,0",
+  "E":"M10,14L0,14L0,0L10,0M0,7L7,7",
+  "F":"M10,14L0,14L0,0M0,7L7,7",
+  "G":"M10,11Q10,14 5,14Q0,14 0,7Q0,0 5,0Q10,0 10,4L10,6L6,6",
+  "H":"M0,0L0,14M10,0L10,14M0,7L10,7",
+  "I":"M2,14L8,14M5,14L5,0M2,0L8,0",
+  "J":"M8,14L8,4Q8,0 4,0Q0,0 0,3",
+  "K":"M0,0L0,14M10,14L1,6M3.5,8.5L10,0",
+  "L":"M0,14L0,0L9,0",
+  "M":"M0,0L0,14L5,5L10,14L10,0",
+  "N":"M0,0L0,14L10,0L10,14",
+  "O":"M5,14Q10,14 10,7Q10,0 5,0Q0,0 0,7Q0,14 5,14",
+  "P":"M0,0L0,14L6,14Q10,14 10,10.5Q10,7 6,7L0,7",
+  "Q":"M5,14Q10,14 10,7Q10,0 5,0Q0,0 0,7Q0,14 5,14M6,4L10,0",
+  "R":"M0,0L0,14L6,14Q10,14 10,10.5Q10,7 6,7L0,7M5,7L10,0",
+  "S":"M10,11.5Q10,14 5,14Q0,14 0,10.5Q0,7 5,7Q10,7 10,3.5Q10,0 5,0Q0,0 0,2.5",
+  "T":"M0,14L10,14M5,14L5,0",
+  "U":"M0,14L0,4Q0,0 5,0Q10,0 10,4L10,14",
+  "V":"M0,14L5,0L10,14",
+  "W":"M0,14L2.5,0L5,9L7.5,0L10,14",
+  "X":"M0,0L10,14M0,14L10,0",
+  "Y":"M0,14L5,7L10,14M5,7L5,0",
+  "Z":"M0,14L10,14L0,0L10,0",
+  "0":"M5,14Q10,14 10,7Q10,0 5,0Q0,0 0,7Q0,14 5,14M2,3L8,11",
+  "1":"M2,11L5,14L5,0M2,0L8,0",
+  "2":"M0,11Q0,14 5,14Q10,14 10,10.5Q10,7 0,0L10,0",
+  "3":"M0,12.5Q1,14 5,14Q10,14 10,10.75Q10,7.5 5.5,7.5Q10,7.5 10,3.75Q10,0 5,0Q1,0 0,1.5",
+  "4":"M7,0L7,14L0,4L10,4",
+  "5":"M10,14L1,14L0,8Q3,9 5,9Q10,9 10,4.5Q10,0 5,0Q1,0 0,1.5",
+  "6":"M9,13Q7,14 5,14Q0,14 0,7Q0,0 5,0Q10,0 10,4Q10,8 5,8Q1,8 0,5",
+  "7":"M0,14L10,14L4,0",
+  "8":"M5,7Q0,7 0,10.5Q0,14 5,14Q10,14 10,10.5Q10,7 5,7Q0,7 0,3.5Q0,0 5,0Q10,0 10,3.5Q10,7 5,7",
+  "9":"M1,1Q3,0 5,0Q10,0 10,7Q10,14 5,14Q0,14 0,10Q0,6 5,6Q9,6 10,9",
+  ".":"M4,0L6,0L6,1.6L4,1.6L4,0",
+  ",":"M6,1.6L4,-1.6",
+  "-":"M2,7L8,7",
+  "+":"M2,7L8,7M5,4L5,10",
+  "=":"M2,5L8,5M2,9L8,9",
+  "!":"M5,14L5,4M4.4,0L5.6,0L5.6,1.2L4.4,1.2L4.4,0",
+  "?":"M0,11Q0,14 5,14Q10,14 10,10.5Q10,7 5,6L5,4M4.4,0L5.6,0L5.6,1.2L4.4,1.2L4.4,0",
+  ":":"M4.4,8.4L5.6,8.4L5.6,9.6L4.4,9.6L4.4,8.4M4.4,3L5.6,3L5.6,4.2L4.4,4.2L4.4,3",
+  "/":"M0,0L10,14",
+  "'":"M5,14L5,10.5",
+  "(":"M7,14Q3,10.5 3,7Q3,3.5 7,0",
+  ")":"M3,14Q7,10.5 7,7Q7,3.5 3,0",
+  "*":"M5,4L5,10M2.4,5.5L7.6,8.5M7.6,5.5L2.4,8.5"
+};
+
+// Adaptive flattening: split a quadratic until the midpoint sits within tol of
+// the chord. Corners between subpaths are preserved because each subpath is its
+// own stroke.
+function flattenPath(d, tol) {
+  const out = []; let cur = null, cx = 0, cy = 0;
+  const re = /([MLQ])([^MLQ]*)/g; let m;
+  const nums = s => s.trim().split(/[\s,]+/).filter(t => t.length).map(Number);
+  while ((m = re.exec(d))) {
+    const n = nums(m[2]);
+    if (m[1] === "M") { cur = [[n[0], n[1]]]; out.push(cur); cx = n[0]; cy = n[1]; }
+    else if (m[1] === "L") {
+      for (let i = 0; i + 1 < n.length; i += 2) { cur.push([n[i], n[i+1]]); cx = n[i]; cy = n[i+1]; }
+    } else {
+      for (let i = 0; i + 3 < n.length; i += 4) {
+        const qx = n[i], qy = n[i+1], ex = n[i+2], ey = n[i+3];
+        subdivQ(cur, cx, cy, qx, qy, ex, ey, tol, 0);
+        cx = ex; cy = ey;
+      }
+    }
+  }
+  return out;
+}
+function subdivQ(out, x0, y0, x1, y1, x2, y2, tol, depth) {
+  const mx = (x0 + 2*x1 + x2) / 4, my = (y0 + 2*y1 + y2) / 4;
+  const dx = (x0 + x2) / 2 - mx, dy = (y0 + y2) / 2 - my;
+  if (depth > 8 || dx*dx + dy*dy < tol*tol) { out.push([x2, y2]); return; }
+  const ax = (x0+x1)/2, ay = (y0+y1)/2, bx = (x1+x2)/2, by = (y1+y2)/2;
+  const cxm = (ax+bx)/2, cym = (ay+by)/2;
+  subdivQ(out, x0, y0, ax, ay, cxm, cym, tol, depth+1);
+  subdivQ(out, cxm, cym, bx, by, x2, y2, tol, depth+1);
+}
+
+function textStrokes(str, capMm, tol) {
+  const unit = capMm / 14, gap = 3;
+  const lines = str.toUpperCase().split("\n");
+  const out = []; let yCursor = 0;
+  const lineH = 20;
+  for (const line of lines) {
+    let x = 0;
+    for (const ch of line) {
+      if (ch === " ") { x += 6 + gap; continue; }
+      const d = GLYPH[ch]; if (!d) { x += 6 + gap; continue; }
+      const sub = flattenPath(d, tol / 100 * 6 + 0.05);
+      let maxX = 0;
+      for (const p of sub) for (const q of p) if (q[0] > maxX) maxX = q[0];
+      for (const p of sub) out.push(p.map(q => [(q[0] + x) * unit, (q[1] - yCursor) * unit]));
+      x += maxX + gap;
+    }
+    yCursor += lineH;
+  }
+  return centerFit(out);
+}
+
+// ---------------------------------------------------------------- 3d models
+function modelCube() {
+  const v = [], e = [];
+  for (let i = 0; i < 8; i++) v.push([(i&1?1:-1), (i&2?1:-1), (i&4?1:-1)]);
+  for (let i = 0; i < 8; i++) for (let b = 1; b < 8; b <<= 1)
+    if (!(i & b)) e.push([i, i | b]);
+  return { v, e, dim: 3 };
+}
+function modelTesseract() {
+  const v = [], e = [];
+  for (let i = 0; i < 16; i++) v.push([(i&1?1:-1),(i&2?1:-1),(i&4?1:-1),(i&8?1:-1)]);
+  for (let i = 0; i < 16; i++) for (let b = 1; b < 16; b <<= 1)
+    if (!(i & b)) e.push([i, i | b]);
+  return { v, e, dim: 4 };
+}
+function modelIco() {
+  const p = (1 + Math.sqrt(5)) / 2, v = [];
+  for (const s1 of [-1,1]) for (const s2 of [-p,p]) {
+    v.push([0, s1, s2]); v.push([s1, s2, 0]); v.push([s2, 0, s1]);
+  }
+  const e = [], n = v.length;
+  let best = 1e9;
+  for (let i = 0; i < n; i++) for (let j = i+1; j < n; j++) {
+    const d = dist3(v[i], v[j]); if (d > 1e-6 && d < best) best = d;
+  }
+  for (let i = 0; i < n; i++) for (let j = i+1; j < n; j++)
+    if (Math.abs(dist3(v[i], v[j]) - best) < 1e-6) e.push([i, j]);
+  return { v: v.map(q => q.map(k => k / p)), e, dim: 3 };
+}
+function dist3(a, b){const x=a[0]-b[0],y=a[1]-b[1],z=a[2]-b[2];return Math.sqrt(x*x+y*y+z*z);}
+
+function curveKnot(detail) {
+  const n = 60 + detail * 50, pts = [];
+  for (let i = 0; i <= n; i++) {
+    const t = i / n * Math.PI * 2, p = 2, q = 3;
+    const r = 1 + 0.45 * Math.cos(q * t);
+    pts.push([r * Math.cos(p * t), r * Math.sin(p * t), 0.45 * Math.sin(q * t)]);
+  }
+  return [pts];
+}
+function curveLissa(detail) {
+  const n = 200 + detail * 140, pts = [];
+  for (let i = 0; i <= n; i++) {
+    const t = i / n * Math.PI * 2;
+    pts.push([Math.sin(3*t), Math.sin(4*t + 1.1), Math.sin(5*t + 0.4)]);
+  }
+  return [pts];
+}
+function curveSphere(detail) {
+  const rings = 3 + detail, segs = 12 + detail * 8, out = [];
+  for (let r = 1; r < rings; r++) {
+    const phi = Math.PI * r / rings, pts = [];
+    for (let i = 0; i <= segs; i++) {
+      const th = i / segs * Math.PI * 2;
+      pts.push([Math.sin(phi)*Math.cos(th), Math.cos(phi), Math.sin(phi)*Math.sin(th)]);
+    }
+    out.push(pts);
+  }
+  for (let m = 0; m < rings + 1; m++) {
+    const th = Math.PI * m / (rings + 1), pts = [];
+    for (let i = 0; i <= segs; i++) {
+      const phi = i / segs * Math.PI * 2;
+      pts.push([Math.sin(phi)*Math.cos(th), Math.cos(phi), Math.sin(phi)*Math.sin(th)]);
+    }
+    out.push(pts);
+  }
+  return out;
+}
+
+function rot3(p, yaw, pitch, roll) {
+  let [x, y, z] = p;
+  let c = Math.cos(roll), s = Math.sin(roll);
+  [x, y] = [x*c - y*s, x*s + y*c];
+  c = Math.cos(yaw); s = Math.sin(yaw);
+  [x, z] = [x*c - z*s, x*s + z*c];
+  c = Math.cos(pitch); s = Math.sin(pitch);
+  [y, z] = [y*c - z*s, y*s + z*c];
+  return [x, y, z];
+}
+function project(p, cam) {
+  const k = cam / (cam + p[2] * 100);
+  return [p[0] * 100 * k, p[1] * 100 * k];
+}
+function rot4(p, ang) {
+  let [x, y, z, w] = p;
+  let c = Math.cos(ang), s = Math.sin(ang);
+  [x, w] = [x*c - w*s, x*s + w*c];
+  c = Math.cos(ang * 0.63); s = Math.sin(ang * 0.63);
+  [y, w] = [y*c - w*s, y*s + w*c];
+  return [x, y, z, w];
+}
+
+function build3d(kind, yaw, pitch, roll, cam, detail, spinT) {
+  let polys;
+  if (kind === "knot") polys = curveKnot(detail);
+  else if (kind === "lissa") polys = curveLissa(detail);
+  else if (kind === "sphere") polys = curveSphere(detail);
+  else {
+    const M = kind === "tesseract" ? modelTesseract() : kind === "ico" ? modelIco() : modelCube();
+    let v3;
+    if (M.dim === 4) {
+      v3 = M.v.map(p => {
+        const q = rot4(p, spinT * 0.7 + roll);
+        const k = 2.6 / (2.6 + q[3]);       // 4d to 3d perspective
+        return [q[0]*k, q[1]*k, q[2]*k];
+      });
+    } else v3 = M.v;
+    // Each edge becomes its own stroke. Chaining edges into a tour is what the
+    // path optimiser below does, so leave them separate here.
+    polys = M.e.map(([a, b]) => [v3[a], v3[b]]);
+  }
+  const out = [];
+  for (const poly of polys) {
+    const flat = poly.map(p => project(rot3(p, yaw, pitch, roll), cam));
+    out.push(flat);
+  }
+  return centerFit(out);
+}
+
+// ---------------------------------------------------------------- 2d shapes
+function shape2d(kind, detail) {
+  const out = [];
+  if (kind === "circle") {
+    const p = []; const n = 60 + detail * 40;
+    for (let i = 0; i <= n; i++) { const t = i/n*Math.PI*2; p.push([Math.cos(t), Math.sin(t)]); }
+    out.push(p);
+  } else if (kind === "star") {
+    const p = [], pts = 5;
+    for (let i = 0; i <= pts*2; i++) {
+      const t = i/(pts*2)*Math.PI*2 - Math.PI/2, r = i%2 ? 0.42 : 1;
+      p.push([Math.cos(t)*r, Math.sin(t)*r]);
+    }
+    out.push(p);
+  } else if (kind === "spiral") {
+    const p = [], turns = 6, n = 200 + detail * 120;
+    for (let i = 0; i <= n; i++) { const t = i/n*Math.PI*2*turns, r = i/n;
+      p.push([Math.cos(t)*r, Math.sin(t)*r]); }
+    out.push(p);
+  } else {
+    const n = 4 + detail;
+    for (let i = 0; i <= n; i++) { const t = -1 + 2*i/n; out.push([[t,-1],[t,1]]); out.push([[-1,t],[1,t]]); }
+  }
+  return centerFit(out);
+}
+
+// ---------------------------------------------------------------- calibration
+function calStrokes(kind) {
+  const w = S.W * 0.6, h = S.H * 0.6, mps = mmPerStep();
+  if (kind === "lash") {
+    // Same line traced both directions. The offset between them is the slack.
+    return [
+      [[-w/2, 6], [w/2, 6]],
+      [[w/2, -6], [-w/2, -6]],
+      [[-w/2, 14], [w/2, 14]],
+      [[w/2, 14], [-w/2, 14]]
+    ];
+  }
+  if (kind === "ruler") {
+    // Ticks at 1, 2, 5, 10 and 20 step offsets so single-step resolution is
+    // directly visible on the wall.
+    const out = [[[-w/2, 0], [w/2, 0]]];
+    const marks = [1, 2, 5, 10, 20, 50];
+    let x = -w/2;
+    for (const m of marks) {
+      x += m * mps;
+      out.push([[x, 0], [x, 8]]);
+    }
+    return out;
+  }
+  if (kind === "square") {
+    return [[[-w/2,-h/2],[w/2,-h/2],[w/2,h/2],[-w/2,h/2],[-w/2,-h/2]],
+            [[-w/2,-h/2],[w/2,h/2]], [[-w/2,h/2],[w/2,-h/2]]];
+  }
+  // rate ramp: a fan of equal-length lines, plotted at rising rates by the caller
+  const out = [];
+  for (let i = 0; i < 8; i++) {
+    const y = -h/2 + h * i / 7;
+    out.push([[-w/2, y], [w/2, y]]);
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------- image raster
+function setImageCanvas(cv) {
+  const g = cv.getContext("2d").getImageData(0, 0, cv.width, cv.height);
+  const gray = new Uint8Array(cv.width * cv.height);
+  for (let i = 0; i < gray.length; i++) {
+    const o = i * 4;
+    gray[i] = (g.data[o] * 3 + g.data[o+1] * 6 + g.data[o+2]) / 10;
+  }
+  S.img = { w: cv.width, h: cv.height, g: gray };
+}
+
+function imageStrokes() {
+  if (!S.img) return [];
+  const mps = mmPerStep();
+  const pct = (+$("rScale").value) / 100;
+  const availW = S.W * pct, availH = S.H * pct;
+  const ar = S.img.w / S.img.h;
+  let wmm = availW, hmm = wmm / ar;
+  if (hmm > availH) { hmm = availH; wmm = hmm * ar; }
+
+  const pitch = (+$("imgPitch").value) * mps;
+  const thr = +$("imgThr").value;
+  const inv = $("imgInv").checked;
+  const rows = Math.max(1, Math.floor(hmm / pitch));
+  const cols = Math.max(2, Math.floor(wmm / mps));
+  const out = [];
+  let flip = false;
+
+  for (let r = 0; r <= rows; r++) {
+    const ymm = hmm / 2 - r * pitch;
+    const py = Math.min(S.img.h - 1, Math.round(r / rows * (S.img.h - 1)));
+    let runs = [], s0 = null;
+    for (let c = 0; c <= cols; c++) {
+      const xmm = -wmm / 2 + (c / cols) * wmm;
+      const px = Math.min(S.img.w - 1, Math.round(c / cols * (S.img.w - 1)));
+      const g = S.img.g[py * S.img.w + px];
+      const dark = inv ? g > thr : g < thr;
+      if (dark && s0 === null) s0 = xmm;
+      if ((!dark || c === cols) && s0 !== null) {
+        if (xmm - s0 > mps * 0.4) runs.push([s0, xmm]);
+        s0 = null;
+      }
+    }
+    if (flip) runs = runs.reverse().map(([a2, b2]) => [b2, a2]);
+    for (const [a2, b2] of runs) out.push([[a2, ymm], [b2, ymm]]);
+    flip = !flip;
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------- svg import
+// The common core of the spec: path with all commands, the basic shapes,
+// nested groups, and the four transform functions. Fills are ignored.
+function svgToStrokes(text, tolMm) {
+  const doc = new DOMParser().parseFromString(text, "image/svg+xml");
+  if (doc.querySelector("parsererror")) throw new Error("not valid svg");
+  const out = [];
+  const I = [1, 0, 0, 1, 0, 0];
+  const mul = (m, n) => [
+    m[0]*n[0] + m[2]*n[1],       m[1]*n[0] + m[3]*n[1],
+    m[0]*n[2] + m[2]*n[3],       m[1]*n[2] + m[3]*n[3],
+    m[0]*n[4] + m[2]*n[5] + m[4], m[1]*n[4] + m[3]*n[5] + m[5]
+  ];
+  const ap = (m, x, y) => [m[0]*x + m[2]*y + m[4], m[1]*x + m[3]*y + m[5]];
+  const parseTransform = attr => {
+    let m = I;
+    const re = /(\w+)\s*\(([^)]*)\)/g; let t;
+    while ((t = re.exec(attr || ""))) {
+      const n = t[2].split(/[\s,]+/).filter(x => x.length).map(Number);
+      if (t[1] === "translate") m = mul(m, [1,0,0,1, n[0]||0, n[1]||0]);
+      else if (t[1] === "scale") m = mul(m, [n[0]||1, 0, 0, n.length>1?n[1]:n[0]||1, 0, 0]);
+      else if (t[1] === "rotate") {
+        const a2 = (n[0]||0) * DEG, c = Math.cos(a2), si = Math.sin(a2);
+        if (n.length > 2) m = mul(m, [1,0,0,1,n[1],n[2]]);
+        m = mul(m, [c, si, -si, c, 0, 0]);
+        if (n.length > 2) m = mul(m, [1,0,0,1,-n[1],-n[2]]);
+      }
+      else if (t[1] === "matrix" && n.length === 6) m = mul(m, n);
+    }
+    return m;
+  };
+  const tol = Math.max(0.05, tolMm);
+
+  function cubic(pts, m, x0,y0, x1,y1, x2,y2, x3,y3, depth) {
+    const d1 = Math.abs((x1-x0)*(y3-y0) - (y1-y0)*(x3-x0));
+    const d2 = Math.abs((x2-x0)*(y3-y0) - (y2-y0)*(x3-x0));
+    const L = Math.hypot(x3-x0, y3-y0) + 1e-9;
+    if (depth > 9 || (d1 + d2) / L < tol) { pts.push([x3, y3]); return; }
+    const ax=(x0+x1)/2, ay=(y0+y1)/2, bx=(x1+x2)/2, by=(y1+y2)/2, cx=(x2+x3)/2, cy=(y2+y3)/2;
+    const dx=(ax+bx)/2, dy=(ay+by)/2, ex=(bx+cx)/2, ey=(by+cy)/2;
+    const fx=(dx+ex)/2, fy=(dy+ey)/2;
+    cubic(pts, m, x0,y0, ax,ay, dx,dy, fx,fy, depth+1);
+    cubic(pts, m, fx,fy, ex,ey, cx,cy, x3,y3, depth+1);
+  }
+  function arc(pts, x0,y0, rx,ry, rot, laf, sf, x1,y1) {
+    if (rx === 0 || ry === 0) { pts.push([x1, y1]); return; }
+    rx = Math.abs(rx); ry = Math.abs(ry);
+    const phi = rot * DEG, cp = Math.cos(phi), sp = Math.sin(phi);
+    const dx2 = (x0 - x1) / 2, dy2 = (y0 - y1) / 2;
+    const xp = cp*dx2 + sp*dy2, yp = -sp*dx2 + cp*dy2;
+    let lam = (xp*xp)/(rx*rx) + (yp*yp)/(ry*ry);
+    if (lam > 1) { const q = Math.sqrt(lam); rx *= q; ry *= q; }
+    let num = rx*rx*ry*ry - rx*rx*yp*yp - ry*ry*xp*xp;
+    if (num < 0) num = 0;
+    let coef = Math.sqrt(num / (rx*rx*yp*yp + ry*ry*xp*xp + 1e-12));
+    if (laf === sf) coef = -coef;
+    const cxp = coef * rx * yp / ry, cyp = -coef * ry * xp / rx;
+    const cx = cp*cxp - sp*cyp + (x0+x1)/2, cy = sp*cxp + cp*cyp + (y0+y1)/2;
+    const ang = (ux, uy, vx, vy) => {
+      const d = Math.hypot(ux,uy) * Math.hypot(vx,vy);
+      let a2 = Math.acos(Math.max(-1, Math.min(1, (ux*vx + uy*vy) / (d + 1e-12))));
+      if (ux*vy - uy*vx < 0) a2 = -a2;
+      return a2;
+    };
+    const th1 = ang(1, 0, (xp-cxp)/rx, (yp-cyp)/ry);
+    let dth = ang((xp-cxp)/rx, (yp-cyp)/ry, (-xp-cxp)/rx, (-yp-cyp)/ry);
+    if (!sf && dth > 0) dth -= 2*Math.PI;
+    if (sf && dth < 0) dth += 2*Math.PI;
+    const n = Math.max(2, Math.ceil(Math.abs(dth) / 0.12));
+    for (let i = 1; i <= n; i++) {
+      const t = th1 + dth * i / n;
+      const px = rx * Math.cos(t), py = ry * Math.sin(t);
+      pts.push([cp*px - sp*py + cx, sp*px + cp*py + cy]);
+    }
+  }
+
+  function pathStrokes(d, m) {
+    const toks = d.match(/[a-zA-Z]|[-+]?[\d.]+(?:e[-+]?\d+)?/gi) || [];
+    let i = 0, cmd = "", cx = 0, cy = 0, sx = 0, sy = 0;
+    let pcx = null, pcy = null, pqx = null, pqy = null;
+    let cur = null;
+    const num = () => parseFloat(toks[i++]);
+    const start = (x, y) => { cur = [[x, y]]; out2.push(cur); };
+    const out2 = [];
+    while (i < toks.length) {
+      const t = toks[i];
+      if (/[a-zA-Z]/.test(t)) { cmd = t; i++; }
+      const rel = cmd === cmd.toLowerCase();
+      const C = cmd.toUpperCase();
+      if (C === "Z") { if (cur && cur.length) { cur.push([sx, sy]); cx = sx; cy = sy; } pcx=pqx=null; continue; }
+      let x, y, x1, y1, x2, y2;
+      switch (C) {
+        case "M":
+          x = num(); y = num(); if (rel) { x += cx; y += cy; }
+          cx = x; cy = y; sx = x; sy = y; start(x, y);
+          cmd = rel ? "l" : "L"; pcx=pqx=null; break;
+        case "L":
+          x = num(); y = num(); if (rel) { x += cx; y += cy; }
+          cur.push([x, y]); cx = x; cy = y; pcx=pqx=null; break;
+        case "H":
+          x = num(); if (rel) x += cx;
+          cur.push([x, cy]); cx = x; pcx=pqx=null; break;
+        case "V":
+          y = num(); if (rel) y += cy;
+          cur.push([cx, y]); cy = y; pcx=pqx=null; break;
+        case "C":
+          x1 = num(); y1 = num(); x2 = num(); y2 = num(); x = num(); y = num();
+          if (rel) { x1+=cx; y1+=cy; x2+=cx; y2+=cy; x+=cx; y+=cy; }
+          cubic(cur, m, cx, cy, x1, y1, x2, y2, x, y, 0);
+          pcx = x2; pcy = y2; pqx = null; cx = x; cy = y; break;
+        case "S":
+          x2 = num(); y2 = num(); x = num(); y = num();
+          if (rel) { x2+=cx; y2+=cy; x+=cx; y+=cy; }
+          x1 = pcx !== null ? 2*cx - pcx : cx;
+          y1 = pcx !== null ? 2*cy - pcy : cy;
+          cubic(cur, m, cx, cy, x1, y1, x2, y2, x, y, 0);
+          pcx = x2; pcy = y2; pqx = null; cx = x; cy = y; break;
+        case "Q":
+          x1 = num(); y1 = num(); x = num(); y = num();
+          if (rel) { x1+=cx; y1+=cy; x+=cx; y+=cy; }
+          cubic(cur, m, cx, cy, (cx+2*x1)/3, (cy+2*y1)/3, (x+2*x1)/3, (y+2*y1)/3, x, y, 0);
+          pqx = x1; pqy = y1; pcx = null; cx = x; cy = y; break;
+        case "T":
+          x = num(); y = num(); if (rel) { x+=cx; y+=cy; }
+          x1 = pqx !== null ? 2*cx - pqx : cx;
+          y1 = pqx !== null ? 2*cy - pqy : cy;
+          cubic(cur, m, cx, cy, (cx+2*x1)/3, (cy+2*y1)/3, (x+2*x1)/3, (y+2*y1)/3, x, y, 0);
+          pqx = x1; pqy = y1; pcx = null; cx = x; cy = y; break;
+        case "A": {
+          const rx = num(), ry = num(), rot = num(), laf = num(), sf = num();
+          x = num(); y = num(); if (rel) { x+=cx; y+=cy; }
+          arc(cur, cx, cy, rx, ry, rot, laf ? 1 : 0, sf ? 1 : 0, x, y);
+          pcx = pqx = null; cx = x; cy = y; break;
+        }
+        default: i++; continue;
+      }
+    }
+    return out2;
+  }
+
+  function walk(el, m) {
+    if (el.nodeType !== 1) return;
+    const mm = mul(m, parseTransform(el.getAttribute && el.getAttribute("transform")));
+    const tag = el.tagName.toLowerCase();
+    const push = poly => { if (poly.length > 1) out.push(poly.map(p2 => ap(mm, p2[0], p2[1]))); };
+    if (tag === "path") {
+      for (const poly of pathStrokes(el.getAttribute("d") || "", mm)) push(poly);
+    } else if (tag === "line") {
+      push([[+el.getAttribute("x1")||0, +el.getAttribute("y1")||0],
+            [+el.getAttribute("x2")||0, +el.getAttribute("y2")||0]]);
+    } else if (tag === "rect") {
+      const x = +el.getAttribute("x")||0, y = +el.getAttribute("y")||0;
+      const w = +el.getAttribute("width")||0, h = +el.getAttribute("height")||0;
+      push([[x,y],[x+w,y],[x+w,y+h],[x,y+h],[x,y]]);
+    } else if (tag === "circle" || tag === "ellipse") {
+      const cx0 = +el.getAttribute("cx")||0, cy0 = +el.getAttribute("cy")||0;
+      const rx = tag === "circle" ? +el.getAttribute("r")||0 : +el.getAttribute("rx")||0;
+      const ry = tag === "circle" ? rx : +el.getAttribute("ry")||0;
+      const poly = [];
+      for (let k = 0; k <= 48; k++) {
+        const t = k / 48 * Math.PI * 2;
+        poly.push([cx0 + rx*Math.cos(t), cy0 + ry*Math.sin(t)]);
+      }
+      push(poly);
+    } else if (tag === "polyline" || tag === "polygon") {
+      const n = (el.getAttribute("points") || "").split(/[\s,]+/).filter(v => v.length).map(Number);
+      const poly = [];
+      for (let k = 0; k + 1 < n.length; k += 2) poly.push([n[k], n[k+1]]);
+      if (tag === "polygon" && poly.length) poly.push(poly[0].slice());
+      push(poly);
+    }
+    for (const ch of el.childNodes) walk(ch, mm);
+  }
+  walk(doc.documentElement, I);
+  // svg is y-down, the plotter is y-up
+  return centerFit(out.map(poly => poly.map(p2 => [p2[0], -p2[1]])));
+}
+
+// ---------------------------------------------------------------- speed planner
+// The old scheme ran the whole plot at one rate, so the worst corner set the
+// ceiling for every straight. This is a trapezoidal profile with junction
+// lookahead: full rate on straights, decelerate INTO corners (arriving at a
+// reversal at speed is where these motors skip), accelerate out. Each point
+// gets its own tick interval, sent with the point, and the firmware executes
+// it verbatim instead of stacking its own ramp on top.
+const TICKHZ = 20000;   // must match firmware TICK_HZ
+
+function planSpeeds(cmds) {
+  const n = cmds.length;
+  if (n < 2) return;
+  const A = Math.max(200, +$("mAccel").value || 3000);
+  const vFloor = 120;                       // safe pull-in rate from standstill
+  const v = new Float64Array(n);
+  const dmaj = new Float64Array(n);         // dominant-axis steps into point i
+  const dx = new Float64Array(n), dy = new Float64Array(n);
+
+  for (let i = 1; i < n; i++) {
+    dx[i] = cmds[i].x - cmds[i-1].x;
+    dy[i] = cmds[i].y - cmds[i-1].y;
+    dmaj[i] = Math.max(Math.abs(dx[i]), Math.abs(dy[i]));
+  }
+
+  // Speed cap at each point: the segment's own rate, tightened at corners by
+  // the turn angle. cos = 1 straight ahead keeps full speed, cos = -1 is a
+  // reversal and drops to the floor.
+  for (let i = 0; i < n; i++) {
+    const vmax = cmds[i].l ? S.rate : S.travel;
+    let cap = vmax;
+    if (i > 0 && i < n - 1 && dmaj[i] > 0 && dmaj[i+1] > 0) {
+      const a2 = Math.hypot(dx[i], dy[i]), b2 = Math.hypot(dx[i+1], dy[i+1]);
+      const cos = (dx[i]*dx[i+1] + dy[i]*dy[i+1]) / (a2 * b2 + 1e-9);
+      const f = Math.pow(Math.max(0, (cos + 1) / 2), 1.5);
+      cap = vFloor + (vmax - vFloor) * f;
+    }
+    v[i] = cap;
+  }
+  v[0] = vFloor; v[n-1] = Math.min(v[n-1], vFloor);
+
+  // forward pass: never accelerate faster than A
+  for (let i = 1; i < n; i++) {
+    if (dmaj[i] === 0) { v[i] = Math.min(v[i], v[i-1]); continue; }
+    const vr = Math.sqrt(v[i-1]*v[i-1] + 2*A*dmaj[i]);
+    if (vr < v[i]) v[i] = vr;
+  }
+  // backward pass: never need to decelerate faster than A
+  for (let i = n - 2; i >= 0; i--) {
+    if (dmaj[i+1] === 0) { v[i] = Math.min(v[i], v[i+1]); continue; }
+    const vr = Math.sqrt(v[i+1]*v[i+1] + 2*A*dmaj[i+1]);
+    if (vr < v[i]) v[i] = vr;
+  }
+
+  for (let i = 0; i < n; i++) {
+    cmds[i].iv = Math.max(1, Math.min(65535, Math.round(TICKHZ / Math.max(60, v[i]))));
+  }
+}
+
+// ---------------------------------------------------------------- fit + optimise
+function centerFit(strokes) {
+  let minX = 1e9, maxX = -1e9, minY = 1e9, maxY = -1e9;
+  for (const s of strokes) for (const p of s) {
+    if (p[0] < minX) minX = p[0]; if (p[0] > maxX) maxX = p[0];
+    if (p[1] < minY) minY = p[1]; if (p[1] > maxY) maxY = p[1];
+  }
+  if (minX > maxX) return strokes;
+  const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
+  const span = Math.max(maxX - minX, maxY - minY) || 1;
+  return strokes.map(s => s.map(p => [(p[0] - cx) / span, (p[1] - cy) / span]));
+}
+function scaleToField(strokes, pct) {
+  const k = Math.min(S.W, S.H) * pct / 100;
+  return strokes.map(s => s.map(p => [p[0] * k, p[1] * k]));
+}
+
+function optimise(strokes, uni) {
+  if (!strokes.length) return strokes;
+  const rem = strokes.slice(), out = [];
+  let cur = [0, 0];
+  while (rem.length) {
+    let best = 0, bd = 1e18, flip = false;
+    for (let i = 0; i < rem.length; i++) {
+      const a = rem[i][0], b = rem[i][rem[i].length - 1];
+      const da = (a[0]-cur[0])**2 + (a[1]-cur[1])**2;
+      const db = (b[0]-cur[0])**2 + (b[1]-cur[1])**2;
+      if (da < bd) { bd = da; best = i; flip = false; }
+      if (!uni && db < bd) { bd = db; best = i; flip = true; }
+    }
+    let s = rem.splice(best, 1)[0];
+    if (flip) s = s.slice().reverse();
+    out.push(s);
+    cur = s[s.length - 1];
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------- quantise
+// Walk each stroke, sample fine enough that consecutive samples are at most one
+// step apart, then drop duplicates. What comes out is exactly what the firmware
+// will execute, which is why the preview and the wall agree.
+function quantise(strokes) {
+  const mps = mmPerStep() || 0.1;
+  const cmds = [];
+  let oob = false;
+  for (const s of strokes) {
+    for (let i = 0; i < s.length; i++) {
+      if (i === 0) {
+        const [sx, sy] = mmToSteps(s[0][0], s[0][1]);
+        if (outOfBounds(sx, sy)) oob = true;
+        cmds.push({ x: clampX(sx), y: clampY(sy), l: 0 });
+        cmds.push({ x: clampX(sx), y: clampY(sy), l: 1 });
+        continue;
+      }
+      const a = s[i-1], b = s[i];
+      const d = Math.hypot(b[0]-a[0], b[1]-a[1]);
+      const n = Math.max(1, Math.ceil(d / mps));
+      for (let k = 1; k <= n; k++) {
+        const t = k / n;
+        const [sx, sy] = mmToSteps(a[0] + (b[0]-a[0])*t, a[1] + (b[1]-a[1])*t);
+        if (outOfBounds(sx, sy)) oob = true;
+        const last = cmds[cmds.length-1];
+        const cx = clampX(sx), cy = clampY(sy);
+        if (last && last.x === cx && last.y === cy && last.l === 1) continue;
+        cmds.push({ x: cx, y: cy, l: 1 });
+      }
+    }
+    cmds.push({ x: cmds[cmds.length-1].x, y: cmds[cmds.length-1].y, l: 0 });
+  }
+  return { cmds, oob };
+}
+function clampX(v){ return S.limOn ? Math.max(S.limMinX, Math.min(S.limMaxX, v)) : v; }
+function clampY(v){ return S.limOn ? Math.max(S.limMinY, Math.min(S.limMaxY, v)) : v; }
+function outOfBounds(sx, sy){
+  return S.limOn && (sx < S.limMinX || sx > S.limMaxX || sy < S.limMinY || sy > S.limMaxY);
+}
+
+// Two stages. First replay the firmware exactly: it inserts lashX/lashY extra
+// shaft steps whenever a commanded direction reverses. Then push that shaft
+// history through a hysteresis band of width slackX/slackY, which is what the
+// real gear train does to the mirror. Comp equal to slack cancels out; comp of
+// zero against real slack produces the classic doubled line.
+function simulate(cmds) {
+  const path = [];
+  let sx = 0, sy = 0, lx = 0, ly = 0, dxs = 1, dys = 1;
+  let mx = 0, my = 0;
+  const hx = S.slackX / 2, hy = S.slackY / 2;
+  for (const c of cmds) {
+    const dLx = c.x - lx, dLy = c.y - ly;
+    if (dLx > 0 && dxs < 0) { sx += S.lashX; dxs = 1; }
+    if (dLx < 0 && dxs > 0) { sx -= S.lashX; dxs = -1; }
+    if (dLy > 0 && dys < 0) { sy += S.lashY; dys = 1; }
+    if (dLy < 0 && dys > 0) { sy -= S.lashY; dys = -1; }
+    sx += dLx; sy += dLy; lx = c.x; ly = c.y;
+
+    if (sx - mx >  hx) mx = sx - hx;
+    if (mx - sx >  hx) mx = sx + hx;
+    if (sy - my >  hy) my = sy - hy;
+    if (my - sy >  hy) my = sy + hy;
+
+    path.push({ x: mx, y: my, l: c.l, ix: c.x, iy: c.y });
+  }
+  return path;
+}
+
+// A uniform offset just shifts the whole drawing and does not matter. What
+// matters is the spread: strokes drawn left-to-right landing somewhere different
+// from strokes drawn right-to-left. So subtract the mean error and report the
+// worst residual, which is the doubling you actually see on the wall.
+function lashError(path) {
+  if (!path.length) return 0;
+  const e = path.map(p => {
+    const a = stepsToMm(p.x, p.y), b = stepsToMm(p.ix, p.iy);
+    return [a[0]-b[0], a[1]-b[1]];
+  });
+  let mx = 0, my = 0;
+  for (const v of e) { mx += v[0]; my += v[1]; }
+  mx /= e.length; my /= e.length;
+  let worst = 0;
+  for (const v of e) {
+    const d = Math.hypot(v[0]-mx, v[1]-my);
+    if (d > worst) worst = d;
+  }
+  return worst;
+}
+
+function stepCost(cmds) {
+  let draw = 0, trav = 0, lx = 0, ly = 0, dxs = 1, dys = 1;
+  for (const c of cmds) {
+    const dLx = c.x - lx, dLy = c.y - ly;
+    let ex = 0, ey = 0;
+    if (dLx > 0 && dxs < 0) { ex = S.lashX; dxs = 1; }
+    if (dLx < 0 && dxs > 0) { ex = S.lashX; dxs = -1; }
+    if (dLy > 0 && dys < 0) { ey = S.lashY; dys = 1; }
+    if (dLy < 0 && dys > 0) { ey = S.lashY; dys = -1; }
+    const n = Math.max(Math.abs(dLx), Math.abs(dLy)) + Math.max(ex, ey);
+    if (c.l) draw += n; else trav += n;
+    lx = c.x; ly = c.y;
+  }
+  return { draw, trav, secs: draw / Math.max(1, S.rate) + trav / Math.max(1, S.travel) };
+}
+
+// ---------------------------------------------------------------- build
+let calMode = null;
+function currentStrokes() {
+  const kind = $("srcKind").value;
+  const tol = +$("rTol").value;
+  const detail = +$("rDetail").value;
+  const scale = +$("rScale").value;
+  S.noReorder = false;
+  if (calMode) return calStrokes(calMode);
+  if (kind === "sketch") return S.sketch.map(st => st.slice());
+  if (kind === "image") { S.noReorder = true; return imageStrokes(); }
+  if (kind === "svg") return S.svgStrokes ? scaleToField(S.svgStrokes, scale) : [];
+  if (kind === "text") return scaleToField(textStrokes($("txt").value, 14, tol), scale);
+  if (["circle","star","spiral","grid"].includes(kind)) return scaleToField(shape2d(kind, detail), scale);
+  const spin = S.animOn ? S.animT : 0;
+  return scaleToField(build3d(kind,
+    (+$("rYaw").value + spin * 34) * DEG,
+    (+$("rPitch").value + spin * 21) * DEG,
+    (+$("rRoll").value) * DEG,
+    +$("rCam").value, detail, spin), scale);
+}
+
+function rebuild() {
+  S.throw = +$("gThrow").value; S.sep = +$("gSep").value;
+  S.W = +$("gW").value; S.H = +$("gH").value;
+  S.limOn = $("limOn").checked;
+  S.limMinX = +$("limMinX").value; S.limMaxX = +$("limMaxX").value;
+  S.limMinY = +$("limMinY").value; S.limMaxY = +$("limMaxY").value;
+  S.rate = +$("mRate").value; S.travel = +$("mTravel").value;
+  S.lashX = +$("mLashX").value; S.lashY = +$("mLashY").value;
+  S.slackX = +$("mSlackX").value; S.slackY = +$("mSlackY").value;
+  S.invX = $("mInvX").checked; S.invY = $("mInvY").checked;
+
+  let st = currentStrokes();
+  if ($("oOpt").checked && !S.noReorder) st = optimise(st, $("oUni").checked);
+  S.strokes = st;
+
+  const q = quantise(st);
+  if ($("oPlan").checked) planSpeeds(q.cmds);
+  else q.cmds.forEach(c => delete c.iv);
+  S.cmds = q.cmds;
+  S.sim = simulate(q.cmds);
+  const le = lashError(S.sim);
+  $("vLashErr").textContent = le.toFixed(2) + " mm";
+  $("vLashErr").className = le > mmPerStep() * 1.5 ? "hot" : "";
+
+  const cost = stepCost(q.cmds);
+  $("vStrokes").textContent = st.length;
+  $("vPts").textContent = q.cmds.length;
+  $("vDraw").textContent = cost.draw;
+  $("vTrav").textContent = cost.trav;
+  let secs = cost.secs;
+  if ($("oPlan").checked && q.cmds.length > 1) {
+    let ticks = 0;
+    for (let i = 1; i < q.cmds.length; i++) {
+      const dm = Math.max(Math.abs(q.cmds[i].x - q.cmds[i-1].x),
+                          Math.abs(q.cmds[i].y - q.cmds[i-1].y));
+      ticks += dm * (q.cmds[i].iv || 1);
+    }
+    secs = ticks / TICKHZ;
+  }
+  $("vTime").textContent = secs < 90 ? secs.toFixed(1) + " s"
+                          : (secs/60).toFixed(1) + " min";
+  $("vOob").textContent = q.oob ? "CLIPPED" : "no";
+  $("vOob").className = q.oob ? "hot" : "";
+  $("clipWarn").style.display = q.oob ? "block" : "none";
+  $("vCone").textContent = S.limOn
+    ? "±" + (((S.limMaxX - S.limMinX) / 2) * 2 * DEG_PER_STEP).toFixed(1)
+      + " / ±" + (((S.limMaxY - S.limMinY) / 2) * 2 * DEG_PER_STEP).toFixed(1) + " deg"
+    : "free";
+
+  const mps = mmPerStep();
+  $("vMmStep").textContent = mps.toFixed(3);
+  const cs = [0,1,2,3].map(i => { const m = cornerMm(i); return mmToSteps(m[0], m[1]); });
+  const xs = cs.map(c => c[0]), ys = cs.map(c => c[1]);
+  $("vFieldSteps").textContent = (Math.max(...xs) - Math.min(...xs)) + " x " +
+                                 (Math.max(...ys) - Math.min(...ys));
+  draw();
+}
+
+// ---------------------------------------------------------------- render
+const tc = $("target"), tx = tc.getContext("2d");
+const rc = $("rig"), rx = rc.getContext("2d");
+
+function fit(c) {
+  const r = c.getBoundingClientRect(), dpr = devicePixelRatio || 1;
+  if (c.width !== Math.round(r.width*dpr) || c.height !== Math.round(r.height*dpr)) {
+    c.width = Math.round(r.width*dpr); c.height = Math.round(r.height*dpr);
+  }
+  return { w: r.width, h: r.height, dpr };
+}
+
+function draw() { drawTarget(); drawRig(); }
+
+function drawTarget() {
+  const { w, h, dpr } = fit(tc);
+  tx.setTransform(dpr,0,0,dpr,0,0);
+  tx.fillStyle = C.ink; tx.fillRect(0,0,w,h);
+  const pad = VIEWPAD;
+  const base = Math.min((w-pad*2)/S.W, (h-pad*2)/S.H);
+  const k = base * S.view.zoom;
+  const ox = w/2 + S.view.cx, oy = h/2 + S.view.cy;
+  const X = mx => ox + mx*k, Y = my => oy - my*k;
+
+  // field
+  tx.strokeStyle = C.rule; tx.lineWidth = 2;
+  tx.strokeRect(X(-S.W/2), Y(S.H/2), S.W*k, S.H*k);
+  tx.strokeStyle = C.faint; tx.lineWidth = 1;
+  tx.beginPath();
+  tx.moveTo(X(-S.W/2), Y(0)); tx.lineTo(X(S.W/2), Y(0));
+  tx.moveTo(X(0), Y(-S.H/2)); tx.lineTo(X(0), Y(S.H/2));
+  tx.stroke();
+
+  // step lattice, only when it would actually be legible
+  const mps = mmPerStep();
+  if ($("oGrid").checked && mps*k > 4) {
+    tx.strokeStyle = C.lattice; tx.lineWidth = 1;
+    tx.beginPath();
+    const n = Math.ceil(S.W/2/mps);
+    for (let i = -n; i <= n; i++) {
+      const [gx] = stepsToMm(i, 0);
+      tx.moveTo(X(gx), Y(-S.H/2)); tx.lineTo(X(gx), Y(S.H/2));
+    }
+    const m = Math.ceil(S.H/2/mps);
+    for (let i = -m; i <= m; i++) {
+      const [, gy] = stepsToMm(0, i);
+      tx.moveTo(X(-S.W/2), Y(gy)); tx.lineTo(X(S.W/2), Y(gy));
+    }
+    tx.stroke();
+  }
+
+  // ideal path underneath
+  if ($("oIdeal").checked) {
+    tx.strokeStyle = C.ghost; tx.lineWidth = 1; tx.setLineDash([1,3]);
+    tx.beginPath();
+    for (const s of S.strokes) {
+      s.forEach((p, i) => i ? tx.lineTo(X(p[0]), Y(p[1])) : tx.moveTo(X(p[0]), Y(p[1])));
+    }
+    tx.stroke(); tx.setLineDash([]);
+  }
+
+  // the actual stepped trace
+  const path = S.sim;
+  tx.lineWidth = 2; tx.lineJoin = "round"; tx.lineCap = "round";
+  tx.strokeStyle = C.pink;
+  tx.beginPath();
+  let pen = false;
+  for (let i = 0; i < path.length; i++) {
+    const c = path[i];
+    const [mx, my] = stepsToMm(c.x, c.y);
+    if (c.l) { if (!pen) { tx.moveTo(X(mx), Y(my)); pen = true; } else tx.lineTo(X(mx), Y(my)); }
+    else pen = false;
+  }
+  tx.stroke();
+
+  // travel moves
+  tx.strokeStyle = C.travel; tx.lineWidth = 1;
+  tx.setLineDash([2,3]); tx.beginPath();
+  let prev = null;
+  for (const c of path) {
+    const [mx, my] = stepsToMm(c.x, c.y);
+    if (!c.l && prev) { tx.moveTo(X(prev[0]), Y(prev[1])); tx.lineTo(X(mx), Y(my)); }
+    prev = [mx, my];
+  }
+  tx.stroke(); tx.setLineDash([]);
+
+  // live beam
+  const [bx, by] = stepsToMm(S.posX, S.posY);
+  if (S.laser) {
+    tx.strokeStyle = "rgba(254,3,134,.45)"; tx.lineWidth = 2;
+    tx.beginPath(); tx.arc(X(bx), Y(by), 11, 0, 7); tx.stroke();
+    tx.fillStyle = C.pink;
+    tx.beginPath(); tx.arc(X(bx), Y(by), 5, 0, 7); tx.fill();
+    tx.fillStyle = C.paper;
+    tx.beginPath(); tx.arc(X(bx), Y(by), 2, 0, 7); tx.fill();
+  } else {
+    tx.fillStyle = C.dim;
+    tx.beginPath(); tx.arc(X(bx), Y(by), 3, 0, 7); tx.fill();
+  }
+
+  if (S.sketchLive && S.sketchLive.length > 1) {
+    tx.strokeStyle = C.paper; tx.lineWidth = 1.5; tx.setLineDash([3, 3]);
+    tx.beginPath();
+    S.sketchLive.forEach((p2, i2) => i2 ? tx.lineTo(X(p2[0]), Y(p2[1])) : tx.moveTo(X(p2[0]), Y(p2[1])));
+    tx.stroke(); tx.setLineDash([]);
+  }
+
+  tx.font = UIFONT();
+  tx.fillStyle = C.dim;
+  tx.fillText(S.W + " x " + S.H + " MM AT " + S.throw + " MM", X(-S.W/2), Y(S.H/2) - 10);
+  tx.fillStyle = C.pink;
+  tx.fillText(mps.toFixed(3) + " MM / STEP", X(-S.W/2), Y(-S.H/2) + 16);
+}
+
+function drawRig() {
+  const { w, h, dpr } = fit(rc);
+  rx.setTransform(dpr,0,0,dpr,0,0);
+  rx.fillStyle = C.ink; rx.fillRect(0,0,w,h);
+
+  const sep   = Math.max(8, S.sep * 0.55);
+  const reach = 132;                       // model units to the target plane
+  const inLen = 62;                        // incoming beam stub
+  const span  = S.limOn ? Math.max(Math.abs(S.limMinX), Math.abs(S.limMaxX),
+                                   Math.abs(S.limMinY), Math.abs(S.limMaxY)) : 260;
+  const aMax  = 2 * span * DEG_PER_STEP * DEG;
+  const half  = Math.min(78, reach * Math.tan(Math.min(aMax, 1.0)));
+  const spanX = inLen + sep + reach + 20;
+  const sc    = Math.min(w / (spanX * 1.14), h / (half * 2.5));
+  const ox    = w * 0.5 - (sep + reach - inLen) * 0.5 * sc;
+  const oy    = h * 0.54;
+
+  const cam = { yaw: 0.66 + Math.sin(S.rigSpin * 0.005) * 0.20, pitch: -0.30, d: 620 };
+  const P = p => {
+    let [x, y, z] = p;
+    let c = Math.cos(cam.yaw), s2 = Math.sin(cam.yaw);
+    [x, z] = [x*c - z*s2, x*s2 + z*c];
+    c = Math.cos(cam.pitch); s2 = Math.sin(cam.pitch);
+    [y, z] = [y*c - z*s2, y*s2 + z*c];
+    const k = cam.d / (cam.d + z * 0.9);
+    return [ox + x*k*sc, oy - y*k*sc];
+  };
+  const line = (a, b, col, wd, dash) => {
+    const A = P(a), B = P(b);
+    rx.strokeStyle = col; rx.lineWidth = wd || 1;
+    rx.setLineDash(dash || []);
+    rx.beginPath(); rx.moveTo(A[0], A[1]); rx.lineTo(B[0], B[1]); rx.stroke();
+    rx.setLineDash([]);
+  };
+  const quad = (pts, fill, stroke) => {
+    const q = pts.map(P);
+    rx.beginPath();
+    q.forEach((p, i) => i ? rx.lineTo(p[0], p[1]) : rx.moveTo(p[0], p[1]));
+    rx.closePath();
+    if (fill) { rx.fillStyle = fill; rx.fill(); }
+    if (stroke) { rx.strokeStyle = stroke; rx.lineWidth = 1.2; rx.stroke(); }
+  };
+  const tag = (p, txt, col) => {
+    const a = P(p);
+    rx.fillStyle = col || C.dim;
+    rx.fillText(txt, a[0] - rx.measureText(txt).width / 2, a[1]);
+  };
+
+  rx.font = UIFONT();
+  rx.textBaseline = "alphabetic";
+
+  const thX = S.posX * DEG_PER_STEP * DEG;
+  const thY = S.posY * DEG_PER_STEP * DEG;
+  const R = 13;
+
+  // optical bench reference
+  line([-inLen, -R*1.9, 0], [sep + reach, -R*1.9, 0], C.faint, 1);
+
+  // X mirror: swings about the vertical axis, so its normal rotates in the XZ plane
+  const ax = Math.PI/4 + thX;
+  const uX = [R*Math.cos(ax), 0, R*Math.sin(ax)], vX = [0, R, 0];
+  quad([[-1,-1],[1,-1],[1,1],[-1,1]].map(([a,b]) =>
+    [uX[0]*a + vX[0]*b, uX[1]*a + vX[1]*b, uX[2]*a + vX[2]*b]),
+    C.ink2, C.rule);
+  line([0,-R*1.5,0],[0,-R*1.9,0], C.rule, 3);
+
+  // Y mirror: tilts about the horizontal axis downstream of the first
+  const ay = Math.PI/4 + thY;
+  const uY = [R, 0, 0], vY = [0, R*Math.cos(ay), R*Math.sin(ay)];
+  quad([[-1,-1],[1,-1],[1,1],[-1,1]].map(([a,b]) =>
+    [sep + uY[0]*a + vY[0]*b, uY[1]*a + vY[1]*b, uY[2]*a + vY[2]*b]),
+    C.ink2, C.rule);
+  line([sep,-R*1.5,0],[sep,-R*1.9,0], C.rule, 3);
+
+  // target plane
+  const pl = sep + reach;
+  quad([[pl,-half,-half],[pl,-half,half],[pl,half,half],[pl,half,-half]], null, C.faint);
+  line([pl,0,-half],[pl,0,half], C.faint, 1);
+  line([pl,-half,0],[pl,half,0], C.faint, 1);
+
+  // beam path, deflected twice
+  const a = 2*thX, b = 2*thY;
+  const hit = [pl, reach * Math.tan(b) / Math.cos(a), reach * Math.tan(a)];
+  const col = S.laser ? C.pink : "#3a3630";
+  line([-inLen,0,0],[0,0,0], col, 1.5);
+  line([0,0,0],[sep,0,0], col, 1.5);
+  line([sep,0,0], hit, col, 1.5);
+  if (S.laser) {
+    const H = P(hit);
+    rx.fillStyle = C.pink; rx.beginPath(); rx.arc(H[0], H[1], 3.4, 0, 7); rx.fill();
+    rx.strokeStyle = "rgba(254,3,134,.35)"; rx.lineWidth = 1.5;
+    rx.beginPath(); rx.arc(H[0], H[1], 9, 0, 7); rx.stroke();
+  }
+
+  // where the beam has already been this frame
+  if (S.sim.length > 1) {
+    rx.strokeStyle = "rgba(254,3,134,.42)"; rx.lineWidth = 1;
+    rx.beginPath();
+    let pen = false;
+    const stride = Math.max(1, Math.floor(S.sim.length / 420));
+    for (let i = 0; i < S.sim.length; i += stride) {
+      const c = S.sim[i];
+      if (!c.l) { pen = false; continue; }
+      const ta = 2 * c.x * DEG_PER_STEP * DEG;
+      const tb = 2 * c.y * DEG_PER_STEP * DEG;
+      const q = P([pl, reach*Math.tan(tb)/Math.cos(ta), reach*Math.tan(ta)]);
+      if (!pen) { rx.moveTo(q[0], q[1]); pen = true; } else rx.lineTo(q[0], q[1]);
+    }
+    rx.stroke();
+  }
+
+  tag([-inLen, R*1.4, 0], "SOURCE");
+  tag([0, R*2.4, 0], "X MIRROR");
+  tag([sep, R*2.4, 0], "Y MIRROR");
+  tag([pl, half + 8, 0], "TARGET " + S.throw + " mm");
+
+  rx.fillStyle = C.dim;
+  rx.fillText("X " + S.posX + " st / " + (S.posX*DEG_PER_STEP).toFixed(2) + " deg mirror", 10, h - 24);
+  rx.fillText("Y " + S.posY + " st / " + (S.posY*DEG_PER_STEP).toFixed(2) + " deg mirror", 10, h - 11);
+}
+
+// ---------------------------------------------------------------- transport
+let serialPort = null, serialWriter = null, bleTx = null;
+let rxBuf = "";
+
+function log(msg, cls) {
+  const el = $("log");
+  const d = document.createElement("div");
+  d.className = cls || "rx"; d.textContent = msg;
+  el.appendChild(d);
+  while (el.childNodes.length > 300) el.removeChild(el.firstChild);
+  el.scrollTop = el.scrollHeight;
+}
+
+async function send(line) {
+  if (!S.connected) { log("> " + line + "  [sim]", "tx"); return; }
+  const data = new TextEncoder().encode(line + "\n");
+  try {
+    if (S.transport === "serial" && serialWriter) await serialWriter.write(data);
+    else if (S.transport === "ble" && bleTx) await bleTx.writeValueWithoutResponse(data);
+    log("> " + line, "tx");
+  } catch (e) { log("tx failed: " + e.message, "er"); }
+}
+
+function parseQc(line) {
+  const kv = {};
+  line.split(/\s+/).slice(1).forEach(t => {
+    const i = t.indexOf("="); if (i > 0) kv[t.slice(0, i)] = t.slice(i + 1);
+  });
+  if (line.startsWith("qc1")) {
+    const num = (k, el) => { if (kv[k] !== undefined) $(el).value = kv[k]; };
+    num("rate","mRate"); num("travel","mTravel");
+    num("lashx","mLashX"); num("lashy","mLashY");
+    num("minx","limMinX"); num("maxx","limMaxX");
+    num("miny","limMinY"); num("maxy","limMaxY");
+    num("throw","gThrow"); num("sep","gSep"); num("fw","gW"); num("fh","gH");
+    $("limOn").checked = kv.lon === "1";
+    $("mInvX").checked = kv.invx === "1"; S.invX = kv.invx === "1";
+    $("mInvY").checked = kv.invy === "1"; S.invY = kv.invy === "1";
+    $("mHold").checked = kv.idle === "0";
+  } else if (line.startsWith("qc2")) {
+    const cs = +kv.cs || 0;
+    for (let i = 0; i < 4; i++) {
+      if ((cs >> i) & 1) {
+        const [x, y] = (kv["c" + i] || "0,0").split(",").map(Number);
+        S.corners[i] = [x, y];
+      } else S.corners[i] = null;
+    }
+  } else if (line.startsWith("qc3")) {
+    const h = (kv.h || "").split(",").map(Number);
+    if (h.length === 8 && h.every(isFinite)) {
+      S.hom = h; S.homInv = invertH(h); S.resid = -1;
+    }
+  } else if (line.startsWith("qc4")) {
+    paintCorners(); rebuild();
+    log("adopted board config", "sy");
+  }
+}
+
+function onLine(line) {
+  line = line.trim(); if (!line) return;
+  if (line.startsWith("qc")) { parseQc(line); return; }
+  if (line.startsWith("st ")) {
+    const g = k => { const m = line.match(new RegExp(k + "=(-?\\d+)")); return m ? +m[1] : null; };
+    const q = g("q"), f = g("free");
+    const lx = g("lx"), ly = g("ly"), px = g("px"), py = g("py");
+    const lon = g("lon"); if (lon !== null && !!lon !== S.limOn) { $("limOn").checked = !!lon; S.limOn = !!lon; }
+    if (q !== null) { S.q = q; $("vQ").textContent = q; }
+    const rn = g("run"); if (rn !== null) S.running = !!rn;
+    if (f !== null) { S.free = f; $("vFree").textContent = f; }
+    // lx/ly is where the beam points; px/py is the raw shaft count including slack take-up.
+    const ax = lx !== null ? lx : px, ay = ly !== null ? ly : py;
+    if (ax !== null) { S.posX = ax; S.posY = ay; updatePos(); draw(); }
+    return;
+  }
+  log(line, (line.startsWith("err") || line.startsWith("warn")) ? "er" : "rx");
+}
+function feed(text) {
+  rxBuf += text;
+  let i;
+  while ((i = rxBuf.indexOf("\n")) >= 0) { onLine(rxBuf.slice(0, i)); rxBuf = rxBuf.slice(i+1); }
+}
+
+async function connectSerial() {
+  if (!navigator.serial) { log("WebSerial unavailable. Use Chrome or Edge over https or file.", "er"); return; }
+  try {
+    serialPort = await navigator.serial.requestPort();
+    await serialPort.open({ baudRate: 115200 });
+    serialWriter = serialPort.writable.getWriter();
+    S.connected = true; S.transport = "serial";
+    setLink("serial");
+    const dec = new TextDecoderStream();
+    serialPort.readable.pipeTo(dec.writable);
+    const rd = dec.readable.getReader();
+    (async () => {
+      try { for (;;) { const { value, done } = await rd.read(); if (done) break; feed(value); } }
+      catch(e) { log("rx ended: " + e.message, "er"); }
+      setLink(null);
+    })();
+    await send("V"); await send("Q");
+  } catch (e) { log("serial: " + e.message, "er"); }
+}
+
+async function connectBle() {
+  if (!navigator.bluetooth) { log("Web Bluetooth unavailable in this browser.", "er"); return; }
+  const SVC = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
+  const RX  = "6e400002-b5a3-f393-e0a9-e50e24dcca9e";
+  const TX  = "6e400003-b5a3-f393-e0a9-e50e24dcca9e";
+  try {
+    const dev = await navigator.bluetooth.requestDevice({
+      filters: [{ namePrefix: "DETENT" }], optionalServices: [SVC] });
+    const srv = await (await dev.gatt.connect()).getPrimaryService(SVC);
+    bleTx = await srv.getCharacteristic(RX);
+    const notif = await srv.getCharacteristic(TX);
+    await notif.startNotifications();
+    notif.addEventListener("characteristicvaluechanged", ev =>
+      feed(new TextDecoder().decode(ev.target.value)));
+    dev.addEventListener("gattserverdisconnected", () => setLink(null));
+    S.connected = true; S.transport = "ble";
+    setLink("ble");
+    await send("V"); await send("Q");
+  } catch (e) { log("ble: " + e.message, "er"); }
+}
+
+function setLink(kind) {
+  S.connected = !!kind; S.transport = kind;
+  $("dLink").className = "dot" + (kind ? " on" : "");
+  $("vLink").textContent = kind || "offline";
+  if (!kind) { serialWriter = null; bleTx = null; }
+}
+
+async function pushConfig() {
+  await send("G " + S.throw + " " + S.sep + " " + S.W + " " + S.H);
+  await send("R " + S.rate + " " + S.travel + " 150");
+  await send("D " + ($("mHold").checked ? 0 : 4000));
+  await send("B " + S.lashX + " " + S.lashY);
+  await send("I " + (S.invX?1:0) + " " + (S.invY?1:0));
+  await send("N " + S.limMinX + " " + S.limMaxX + " " + S.limMinY + " " + S.limMaxY);
+  await send("U " + (S.limOn?1:0));
+  if (S.hom) await send("Y " + S.hom.map(v => v.toPrecision(9)).join(" "));
+}
+
+// ---------------------------------------------------------------- streaming
+// Credit window. The board reports free slots every 150 ms; we never put more in
+// flight than it says it can hold, which is what stops the queue-full drops.
+function setRunning(on) {
+  $("bPlot").innerHTML = on ? '<i class="fa-solid fa-spinner fa-spin"></i>PLOTTING'
+                            : '<i class="fa-solid fa-play"></i>PLOT';
+}
+
+async function plot(cmds) {
+  if (S.plotting) return;
+  S.plotting = true; S.sent = 0;
+  setRunning(true);
+  try { await streamCmds(cmds, true); }
+  finally { S.plotting = false; setRunning(false); }
+}
+
+async function streamCmds(cmds, report) {
+  const batchMax = 6;                      // points per line, keeps under BLE MTU
+  let i = 0, stall = 0;
+  {
+    while (i < cmds.length && S.plotting) {
+      if (S.connected && S.free < batchMax + 8) {
+        await sleep(40);
+        if (++stall > 25) { stall = 0; await send("?"); }
+        continue;
+      }
+      stall = 0;
+      const chunk = [];
+      for (let k = 0; k < batchMax && i < cmds.length; k++, i++) {
+        const c = cmds[i];
+        chunk.push(c.x + "," + c.y + "," + c.l + (c.iv ? "," + c.iv : ""));
+      }
+      await send("S " + chunk.join(" "));
+      S.free -= chunk.length;
+      S.sent = i; $("vSent").textContent = i + " / " + cmds.length;
+      if (!S.connected) {                  // dry run: animate the beam locally
+        const c = cmds[Math.min(i, cmds.length-1)];
+        S.posX = c.x; S.posY = c.y; S.laser = !!c.l; updatePos(); draw();
+        await sleep(4);
+      }
+    }
+    if (S.connected) await send("?");
+  }
+}
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+async function loopFrames() {
+  if (S.looping) { S.looping = false; S.plotting = false; $("bLoop").classList.remove("act"); return; }
+  S.looping = true; $("bLoop").classList.add("act");
+  while (S.looping) {
+    S.animT += 0.12;
+    rebuild();
+    await plot(S.cmds);
+    await sleep(120);
+  }
+  $("bLoop").classList.remove("act");
+}
+
+// ---------------------------------------------------------------- ui wiring
+function updatePos() {
+  $("vPos").textContent = S.posX + ", " + S.posY;
+  $("dLaser").className = "dot" + (S.laser ? " hot" : "");
+}
+
+document.querySelectorAll(".grp>h3").forEach(h =>
+  h.onclick = () => h.parentElement.classList.toggle("collapsed"));
+
+["gThrow","gSep","gW","gH","mRate","mTravel","mAccel","mLashX","mLashY","mSlackX","mSlackY",
+ "limMinX","limMaxX","limMinY","limMaxY",
+ "rYaw","rPitch","rRoll","rCam","rDetail","rScale","rTol"].forEach(id =>
+  $(id).addEventListener("input", () => { calMode = null; rebuild(); }));
+["oPlan","oOpt","oUni","oIdeal","oGrid"].forEach(id =>
+  $(id).addEventListener("change", rebuild));
+// Inversion is a hardware correction, so it goes to the board and does not
+// transform the preview. Flip it, jog, and check the beam moves the way you meant.
+["mInvX","mInvY"].forEach(id => $(id).addEventListener("change", async () => {
+  S.invX = $("mInvX").checked; S.invY = $("mInvY").checked;
+  await send("I " + (S.invX?1:0) + " " + (S.invY?1:0));
+}));
+["limOn","limMinX","limMaxX","limMinY","limMaxY"].forEach(id =>
+  $(id).addEventListener("change", rebuild));
+$("txt").addEventListener("input", () => { calMode = null; rebuild(); });
+
+$("srcKind").addEventListener("change", () => {
+  calMode = null;
+  const k = $("srcKind").value;
+  $("pText").style.display = k === "text" ? "" : "none";
+  $("pSketch").style.display = k === "sketch" ? "" : "none";
+  $("pImg").style.display = k === "image" ? "" : "none";
+  $("pSvg").style.display = k === "svg" ? "" : "none";
+  $("p3d").style.display = ["cube","tesseract","ico","knot","sphere","lissa"].includes(k) ? "" : "none";
+  rebuild();
+});
+
+// ---------------------------------------------------------------- calibration
+function paintCorners() {
+  for (let i = 0; i < 4; i++) {
+    const c = S.corners[i], el = $("c" + i);
+    el.textContent = c ? c[0] + "," + c[1] : "--";
+    const btn = el.parentElement;
+    btn.classList.toggle("set", !!c);
+    btn.classList.toggle("armed", i === S.armed);
+  }
+  $("vArmed").textContent = ["TL","TR","BR","BL"][S.armed];
+  $("vMap").textContent = S.hom ? "measured" : "ideal";
+  $("vMap").className = S.hom ? "hot" : "";
+  $("vResid").textContent = !S.hom ? "--" : (S.resid < 0 ? "board" : S.resid.toFixed(2) + " mm");
+}
+
+document.querySelectorAll(".cbtn").forEach(b => b.onclick = () => {
+  S.armed = +b.dataset.corner; paintCorners();
+});
+
+$("bCapture").onclick = async () => {
+  S.corners[S.armed] = [S.posX, S.posY];
+  await send("P " + S.armed + " ");
+  log("corner " + ["TL","TR","BR","BL"][S.armed] + " = " + S.posX + "," + S.posY, "sy");
+  const next = S.corners.findIndex(c => !c);
+  if (next >= 0) S.armed = next;
+  paintCorners();
+};
+
+$("bGoto").onclick = async () => {
+  const c = S.corners[S.armed];
+  if (!c) { log("that corner has not been captured", "er"); return; }
+  S.posX = c[0]; S.posY = c[1];
+  await send("S " + c[0] + "," + c[1] + ",0");
+  updatePos(); draw();
+};
+
+$("bSolve").onclick = async () => {
+  if (S.corners.some(c => !c)) { log("capture all four corners first", "er"); return; }
+  const pts = S.corners.map((c, i) => {
+    const m = cornerMm(i);
+    return [m[0], m[1], stepToU(c[0]), stepToU(c[1])];
+  });
+  const h = solveH(pts);
+  if (!h) { log("corners are collinear or degenerate, recapture them", "er"); return; }
+  S.hom = h; S.homInv = invertH(h);
+
+  // Residual is the honest check: push each corner back through the solved map
+  // and see how far it lands from the steps we actually measured.
+  let worst = 0;
+  for (let i = 0; i < 4; i++) {
+    const m = cornerMm(i), got = mmToSteps(m[0], m[1]), want = S.corners[i];
+    const a = stepsToMm(got[0], got[1]), b = stepsToMm(want[0], want[1]);
+    worst = Math.max(worst, Math.hypot(a[0]-b[0], a[1]-b[1]));
+  }
+  S.resid = worst;
+
+  // Aspect of the physical quad, from the corner deflection tangents. If it
+  // disagrees with the field W:H the drawing will squash or clip to match.
+  const uw = (Math.abs(stepToU(S.corners[1][0]) - stepToU(S.corners[0][0]))
+            + Math.abs(stepToU(S.corners[2][0]) - stepToU(S.corners[3][0]))) / 2;
+  const vh = (Math.abs(stepToU(S.corners[0][1]) - stepToU(S.corners[3][1]))
+            + Math.abs(stepToU(S.corners[1][1]) - stepToU(S.corners[2][1]))) / 2;
+  S.quadAspect = vh > 1e-9 ? uw / vh : 0;
+  $("vAspect").textContent = S.quadAspect ? S.quadAspect.toFixed(2) : "--";
+  const fieldAspect = S.W / S.H;
+  if (S.quadAspect && Math.abs(S.quadAspect / fieldAspect - 1) > 0.25) {
+    log("field is " + fieldAspect.toFixed(2) + " w:h but the captured quad is "
+      + S.quadAspect.toFixed(2) + ". Content will squash or clip. FIT FIELD H fixes it.", "er");
+  }
+
+  await send("Y " + h.map(v => v.toPrecision(9)).join(" "));
+  log("mapping solved, corner residual " + worst.toFixed(3) + " mm", "sy");
+  paintCorners(); rebuild();
+};
+
+$("bFitH").onclick = () => {
+  if (!S.quadAspect) { log("solve the mapping first", "er"); return; }
+  $("gH").value = Math.max(5, Math.round(S.W / S.quadAspect));
+  log("field H set to " + $("gH").value + " mm to match the captured quad", "sy");
+  rebuild();
+};
+
+$("bClearCal").onclick = async () => {
+  S.corners = [null,null,null,null]; S.hom = null; S.homInv = null; S.armed = 0;
+  await send("Y");
+  log("mapping cleared, back to the ideal model", "sy");
+  paintCorners(); rebuild();
+};
+
+$("bLimFromCorners").onclick = () => {
+  if (S.corners.some(c => !c)) { log("capture all four corners first", "er"); return; }
+  const m = 4;
+  $("limMinX").value = Math.min(...S.corners.map(c => c[0])) - m;
+  $("limMaxX").value = Math.max(...S.corners.map(c => c[0])) + m;
+  $("limMinY").value = Math.min(...S.corners.map(c => c[1])) - m;
+  $("limMaxY").value = Math.max(...S.corners.map(c => c[1])) + m;
+  $("limOn").checked = true;
+  rebuild(); sendLimits();
+};
+async function sendLimits() {
+  await send("N " + S.limMinX + " " + S.limMaxX + " " + S.limMinY + " " + S.limMaxY);
+  await send("U " + (S.limOn?1:0));
+}
+$("bLimSend").onclick = () => { rebuild(); sendLimits(); };
+
+document.querySelectorAll("[data-cal]").forEach(b => b.onclick = () => {
+  calMode = b.dataset.cal; rebuild();
+  log("calibration pattern: " + calMode, "sy");
+});
+
+document.querySelectorAll("[data-jog]").forEach(b => b.onclick = async () => {
+  const [ux, uy] = b.dataset.jog.split(",").map(Number);
+  const n = +$("jStep").value;
+  await send("J " + (ux*n) + " " + (uy*n));
+  if (!S.connected) { S.posX += ux*n; S.posY += uy*n; updatePos(); draw(); }
+});
+
+$("bHome").onclick = async () => {
+  await send("H"); S.posX = 0; S.posY = 0; updatePos(); draw();
+};
+$("bLaser").onclick = async () => {
+  S.laser = !S.laser;
+  await send("L " + (S.laser ? 1 : 0));
+  $("bLaser").innerHTML = '<i class="fa-solid fa-bolt"></i>' + (S.laser ? "BEAM OFF" : "BEAM ON");
+  $("bLaser").classList.toggle("danger", S.laser);
+  updatePos(); draw();
+};
+$("bRelease").onclick = () => send("E 0");
+$("bStop").onclick = async () => {
+  S.plotting = false; S.looping = false; S.laser = false;
+  await send("X");
+  $("bLaser").innerHTML = '<i class="fa-solid fa-bolt"></i>BEAM ON'; $("bLaser").classList.remove("danger");
+  updatePos(); draw();
+};
+$("bPushCfg").onclick = () => { rebuild(); pushConfig(); };
+$("bSaveCfg").onclick = () => send("W");
+$("bPull").onclick = () => send("Q");
+$("mHold").addEventListener("change", () => send("D " + ($("mHold").checked ? 0 : 4000)));
+$("bSerial").onclick = connectSerial;
+$("bBle").onclick = connectBle;
+$("bPlot").onclick = () => plot(S.cmds);
+$("bLoop").onclick = loopFrames;
+$("bClear").onclick = () => $("log").innerHTML = "";
+
+function huntLeg(cmds, axis, from, to, rate) {
+  // linear ramp 120 -> rate over 60 steps, cruise, ramp down, one step at a time
+  const dirn = Math.sign(to - from);
+  const total = Math.abs(to - from);
+  const rampN = Math.min(60, Math.floor(total / 3));
+  for (let i = 1; i <= total; i++) {
+    let v;
+    if (i <= rampN) v = 120 + (rate - 120) * (i / rampN);
+    else if (i > total - rampN) v = 120 + (rate - 120) * ((total - i) / rampN);
+    else v = rate;
+    const pos = from + dirn * i;
+    cmds.push({ x: axis === "x" ? pos : 0, y: axis === "y" ? pos : 0,
+                l: 0, iv: Math.max(1, Math.round(TICKHZ / v)) });
+  }
+}
+
+async function stallHunt() {
+  if (S.plotting) return;
+  const rates = [500, 650, 800, 950, 1100, 1300, 1500];
+  const span = 240;
+  log("STALL HUNT: beam blinks at home before each pass. Mark that spot.", "sy");
+  log("The first rate whose blink comes back somewhere else is past pull-out.", "sy");
+  log("Set draw rate to about 70 percent of the last clean rate.", "sy");
+  S.plotting = true; setRunning(true);
+  try {
+    for (const axis of ["x", "y"]) {
+      for (const rate of rates) {
+        if (!S.plotting) return;
+        log(axis.toUpperCase() + " at " + rate + " steps/s", "sy");
+        // home blink: three flashes at 0,0
+        for (let b = 0; b < 3; b++) {
+          await send("L 1"); await sleep(120);
+          await send("L 0"); await sleep(120);
+        }
+        const cmds = [{ x: 0, y: 0, l: 0, iv: Math.round(TICKHZ / 120) }];
+        huntLeg(cmds, axis, 0, span, rate);
+        huntLeg(cmds, axis, span, 0, rate);
+        await streamCmds(cmds);
+        await drainQueue();
+        await sleep(250);
+      }
+    }
+    log("hunt complete. Zero at your mark if anything walked, then set rates.", "sy");
+  } finally { S.plotting = false; setRunning(false); }
+}
+$("bHunt").onclick = stallHunt;
+
+async function drainQueue() {
+  if (!S.connected) { await sleep(200); return; }
+  for (let i = 0; i < 200; i++) {
+    await send("?"); await sleep(120);
+    if (S.q === 0 && !S.running) return;
+  }
+}
+$("bHelp").onclick = () => $("manual").classList.add("open");
+$("bHelpClose").onclick = () => $("manual").classList.remove("open");
+$("manual").addEventListener("click", e => { if (e.target.id === "manual") $("manual").classList.remove("open"); });
+
+$("imgFile").addEventListener("change", e => {
+  const f = e.target.files[0]; if (!f) return;
+  const img = new Image();
+  img.onload = () => {
+    const cap = 420;
+    const k = Math.min(1, cap / Math.max(img.width, img.height));
+    const cv = document.createElement("canvas");
+    cv.width = Math.max(2, Math.round(img.width * k));
+    cv.height = Math.max(2, Math.round(img.height * k));
+    const cx2 = cv.getContext("2d");
+    cx2.fillStyle = "#fff"; cx2.fillRect(0, 0, cv.width, cv.height);
+    cx2.drawImage(img, 0, 0, cv.width, cv.height);
+    setImageCanvas(cv);
+    URL.revokeObjectURL(img.src);
+    log("image loaded " + cv.width + "x" + cv.height, "sy");
+    rebuild();
+  };
+  img.onerror = () => log("could not read that image", "er");
+  img.src = URL.createObjectURL(f);
+});
+["imgThr","imgPitch"].forEach(id => $(id).addEventListener("input", rebuild));
+$("imgInv").addEventListener("change", rebuild);
+
+$("svgFile").addEventListener("change", e => {
+  const f = e.target.files[0]; if (!f) return;
+  const rd = new FileReader();
+  rd.onload = () => {
+    try {
+      S.svgStrokes = svgToStrokes(rd.result, (+$("rTol").value) / 10);
+      log("svg loaded, " + S.svgStrokes.length + " strokes", "sy");
+      rebuild();
+    } catch (err) { log("svg: " + err.message, "er"); }
+  };
+  rd.readAsText(f);
+});
+
+$("bSketchClear").onclick = () => { S.sketch = []; $("vSketchN").textContent = 0; rebuild(); };
+$("bSketchUndo").onclick = () => { S.sketch.pop(); $("vSketchN").textContent = S.sketch.length; rebuild(); };
+$("bPreview").onclick = () => { S.animOn = false; $("bPreview").classList.add("act");
+  $("bAnimate").classList.remove("act"); rebuild(); };
+$("bAnimate").onclick = () => { S.animOn = !S.animOn;
+  $("bAnimate").classList.toggle("act", S.animOn);
+  $("bPreview").classList.toggle("act", !S.animOn); };
+$("cSpin").addEventListener("change", e => { S.animOn = e.target.checked; });
+
+// live steering on the target view
+let dragging = false, panning = false, panFrom = null;
+
+// AUDIT FIX: every pointermove used to fire a send. Over BLE that floods the
+// queue and drops. Position sends are now coalesced to ~30 Hz with a trailing
+// flush so the final position always lands.
+let txLast = 0, txTimer = null, txPend = null;
+function queuePos() {
+  txPend = [S.posX, S.posY, S.laser ? 1 : 0];
+  const now = performance.now();
+  if (now - txLast > 33) { txLast = now; flushPos(); }
+  else if (!txTimer) txTimer = setTimeout(() => { txTimer = null; txLast = performance.now(); flushPos(); }, 36);
+}
+function flushPos() {
+  if (!txPend) return;
+  const [x, y, l] = txPend; txPend = null;
+  send("S " + x + "," + y + "," + l);
+}
+
+function eventMm(e) {
+  const r = tc.getBoundingClientRect();
+  const base = Math.min((r.width - VIEWPAD*2) / S.W, (r.height - VIEWPAD*2) / S.H);
+  const k = base * S.view.zoom;
+  const mx = (e.clientX - r.left - r.width/2 - S.view.cx) / k;
+  const my = -(e.clientY - r.top - r.height/2 - S.view.cy) / k;
+  return [mx, my];
+}
+
+tc.addEventListener("contextmenu", e => e.preventDefault());
+tc.addEventListener("pointerdown", e => {
+  tc.setPointerCapture(e.pointerId);
+  if (e.button !== 0) { panning = true; panFrom = [e.clientX, e.clientY]; return; }
+  dragging = true;
+  if ($("srcKind").value === "sketch") S.sketchLive = [];
+  steer(e);
+});
+tc.addEventListener("pointermove", e => {
+  if (panning) {
+    S.view.cx += e.clientX - panFrom[0];
+    S.view.cy += e.clientY - panFrom[1];
+    panFrom = [e.clientX, e.clientY];
+    draw(); return;
+  }
+  if (dragging) steer(e);
+});
+tc.addEventListener("pointerup", async e => {
+  panning = false;
+  if (!dragging) return;
+  dragging = false;
+  if (S.sketchLive) {
+    if (S.sketchLive.length > 1) {
+      S.sketch.push(S.sketchLive);
+      $("vSketchN").textContent = S.sketch.length;
+    }
+    S.sketchLive = null;
+    rebuild();
+  }
+  if (S.laser && !e.shiftKey) { S.laser = false; await send("L 0"); updatePos(); draw(); }
+});
+tc.addEventListener("dblclick", () => { S.view = { cx: 0, cy: 0, zoom: 1 }; draw(); });
+tc.addEventListener("wheel", e => {
+  e.preventDefault();
+  // zoom about the cursor, otherwise the lattice you were inspecting walks away
+  const r = tc.getBoundingClientRect();
+  const px = e.clientX - r.left - r.width/2, py = e.clientY - r.top - r.height/2;
+  const f = e.deltaY < 0 ? 1.14 : 0.877;
+  const z2 = Math.max(0.4, Math.min(60, S.view.zoom * f));
+  const k = z2 / S.view.zoom;
+  S.view.cx = px - (px - S.view.cx) * k;
+  S.view.cy = py - (py - S.view.cy) * k;
+  S.view.zoom = z2;
+  draw();
+}, { passive: false });
+
+async function steer(e) {
+  const [mx, my] = eventMm(e);
+  const [sx, sy] = mmToSteps(mx, my);
+  S.posX = clampX(sx); S.posY = clampY(sy);
+  if (S.sketchLive) {
+    const last = S.sketchLive[S.sketchLive.length - 1];
+    if (!last || Math.hypot(mx - last[0], my - last[1]) > 1.2) S.sketchLive.push([mx, my]);
+  }
+  if (e.shiftKey && !S.laser) { S.laser = true; await send("L 1"); }
+  queuePos();
+  updatePos(); draw();
+}
+
+// Keepalive while the beam is manually on, so the firmware dead-man knows the
+// host is still here and does not cut a deliberate alignment hold.
+setInterval(() => { if (S.connected && S.laser && !S.plotting) send("?"); }, 2000);
+
+// ---------------------------------------------------------------- loop
+function tick() {
+  S.rigSpin++;
+  if (S.animOn && !S.plotting) { S.animT += 0.012; rebuild(); }
+  else drawRig();
+  requestAnimationFrame(tick);
+}
+addEventListener("resize", draw);
+
+$("pText").style.display = "none";
+const TIPS = {
+  gThrow: "Y mirror to target plane, mm, along the beam",
+  gSep: "X mirror pivot to Y mirror pivot, mm",
+  gW: "real width of your target rectangle in mm. Content is laid out in this box",
+  gH: "real height of your target rectangle in mm. FIT FIELD H can set this from the corners",
+  mRate: "half steps per second while the beam is on. RAMP test finds your ceiling",
+  mTravel: "half steps per second while the beam is off",
+  mAccel: "how hard the planner accelerates and brakes, steps per second squared",
+  oPlan: "trapezoidal speed profile with corner lookahead. Straights run at full rate, corners slow down",
+  bHunt: "automated pull-out test. Watch the home blink: the first rate where it walks is your ceiling",
+  mLashX: "steps the board inserts when X reverses direction",
+  mLashY: "steps the board inserts when Y reverses direction",
+  mSlackX: "measured gearbox slack in X, from the LASH test. Preview only",
+  mSlackY: "measured gearbox slack in Y, from the LASH test. Preview only",
+  mInvX: "flips which way the X motor turns. Changes hardware, not the preview",
+  mInvY: "flips which way the Y motor turns. Changes hardware, not the preview",
+  mHold: "keep coils energized when idle. Holds position, warms the motors",
+  limOn: "clamp every move to the limits below. Leave off while exploring",
+  limMinX: "lowest allowed X in steps", limMaxX: "highest allowed X in steps",
+  limMinY: "lowest allowed Y in steps", limMaxY: "highest allowed Y in steps",
+  jStep: "steps per jog button press",
+  rScale: "content size as a percentage of the smaller field dimension",
+  rTol: "how closely curves are followed. Lower is finer and slower",
+  rDetail: "polygon density for the 3d models",
+  imgThr: "brightness cutoff. Pixels darker than this draw",
+  imgPitch: "step rows between scanlines. Higher is faster and coarser",
+  imgInv: "draw light pixels instead of dark ones",
+  oOpt: "reorder strokes to shorten travel. Off for raster automatically",
+  oUni: "always approach strokes from the same side, trades speed for repeatability",
+  oIdeal: "ghost of the perfect path behind the stepped one",
+  oGrid: "the actual step lattice. Zoom in to see it",
+  bPushCfg: "push every setting on this page to the board",
+  bPull: "read the board and adopt its settings here",
+  bSaveCfg: "write the board config to flash so it survives power off",
+  bCapture: "store the current beam position as the armed corner",
+  bGoto: "drive the beam to the armed corner",
+  bSolve: "fit the four corners and start using the measured mapping",
+  bLimFromCorners: "set the limits from the captured corners with a small margin"
+};
+for (const k in TIPS) { const el = $(k); if (el) el.title = TIPS[k]; }
+
+paintCorners();
+rebuild();
+tick();
+log("detent ready. connect over usb serial or bluetooth, or drive the simulator offline.", "sy");
+</script>
+</body>
+</html>

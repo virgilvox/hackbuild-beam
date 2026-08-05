@@ -1,0 +1,36 @@
+{
+  "name": "@virgilvox/beam-link",
+  "version": "0.0.0",
+  "description": "BEAM SDK: transports, device orchestration, credit-window streaming, and the safety contract. Drive a BEAM machine from your own page or script.",
+  "license": "MIT",
+  "author": "Moheeb Zara",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/virgilvox/hackbuild-beam.git",
+    "directory": "packages/beam-link"
+  },
+  "type": "module",
+  "sideEffects": false,
+  "files": ["dist"],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./web": {
+      "types": "./dist/web/index.d.ts",
+      "default": "./dist/web/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@virgilvox/beam-core": "workspace:*"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  }
+}
