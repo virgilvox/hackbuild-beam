@@ -17,6 +17,48 @@ import { useAnimate } from "../stores/animate";
 defineProps<{ focus: string | null }>();
 
 const p = useProject();
+
+/*
+ * The source tabs.
+ *
+ * `pattern` collects everything generated from a formula, because those share one
+ * panel and differ only by which formula. The rest are distinct enough to deserve
+ * their own tab: they take different inputs and answer different questions.
+ *
+ * `direct` is here because from where you sit it is a way of drawing, even though
+ * nothing downstream treats it as a source.
+ */
+const SOURCE_TABS = [
+  { id: "text", label: "text", pick: "text" },
+  { id: "sketch", label: "draw", pick: "sketch" },
+  { id: "direct", label: "direct", pick: "direct" },
+  { id: "pattern", label: "patterns", pick: "cube" },
+  { id: "svg", label: "svg", pick: "svg" },
+  { id: "image", label: "image", pick: "image" },
+] as const;
+
+const PATTERNS = [
+  "cube", "tesseract", "ico", "knot", "sphere", "lissajous",
+  "circle", "star", "spiral", "grid", "lash", "ruler", "square", "ramp",
+];
+
+/** Which tab a source belongs to. */
+function tabOf(src: string): string {
+  if (PATTERNS.includes(src)) return "pattern";
+  if (src === "sketch") return "sketch";
+  return src;
+}
+
+/*
+ * Selecting a tab remembers nothing on purpose. Coming back to patterns lands on
+ * the cube rather than on whichever calibration target was last used, because the
+ * calibration ones fire a live beam at a wall and are not a thing to arrive at by
+ * pressing back.
+ */
+function pickTab(t: { pick: string }) {
+  if (tabOf(p.source) === tabOf(t.pick)) return;
+  p.source = t.pick as typeof p.source;
+}
 const machine = useMachine();
 const log = useLog();
 const job = useJob();
@@ -114,15 +156,28 @@ function toggleGrp(id: string) {
     <section id="panel-content" class="hb-grp" :class="{ focus: focus === 'content' , collapsed: collapsed['content'] }">
       <h3 @click="toggleGrp('content')">content</h3>
       <div class="hb-body">
-        <label class="hb-row">
-          source
+        <!-- Tabs rather than a dropdown. The source is the first decision and the
+             one you change most, and a select hides every option but the one already
+             chosen, which is the wrong way round for a control whose whole job is to
+             show you what this machine can be pointed at. -->
+        <div class="tabs" role="tablist">
+          <button
+            v-for="t in SOURCE_TABS"
+            :key="t.id"
+            type="button"
+            role="tab"
+            :aria-selected="tabOf(p.source) === t.id"
+            :class="{ act: tabOf(p.source) === t.id }"
+            @click="pickTab(t)"
+          >
+{{ t.label }}
+</button>
+        </div>
+
+        <!-- Only the groups with more than one member need a second choice. -->
+        <label v-if="tabOf(p.source) === 'pattern'" class="hb-row">
+          pattern
           <select v-model="p.source">
-            <optgroup label="draw">
-              <option value="text">text</option>
-              <option value="sketch">sketch on the target</option>
-              <option value="svg">svg file</option>
-              <option value="image">image</option>
-            </optgroup>
             <optgroup label="wireframe">
               <option value="cube">cube</option>
               <option value="tesseract">tesseract</option>
@@ -141,10 +196,19 @@ function toggleGrp(id: string) {
               <option value="lash">lash gauge</option>
               <option value="ruler">ruler</option>
               <option value="square">square</option>
-              <option value="ramp">rate ramp</option>
+              <option value="ramp">speed ramp</option>
             </optgroup>
           </select>
         </label>
+
+        <p v-if="p.source === 'direct'" class="hb-note">
+          Drag on the target and the beam goes where you point, with no planner in the
+          way. Nothing is recorded and nothing is plotted: this is you driving. On a rig
+          that misses by a fixed fraction of a millimetre it is often the most accurate
+          way to draw, because your eye closes the loop the machine cannot close for
+          itself and you correct as you go instead of committing a plan and watching it
+          miss. Use <b>sketch</b> instead if you want to keep what you drew and replot it.
+        </p>
 
         <template v-if="p.source === 'text'">
           <textarea v-model="p.text" rows="2"></textarea>
@@ -290,6 +354,28 @@ function toggleGrp(id: string) {
 </template>
 
 <style scoped>
+/* One row, wrapping. Six tabs do not fit a narrow column on one line and a
+ * horizontal scroller would hide the one you want. */
+.tabs { display: flex; flex-wrap: wrap; gap: 3px; margin-bottom: 8px; }
+.tabs button {
+  flex: 1 0 auto;
+  font-family: var(--hb-mono);
+  font-size: 10px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  padding: 4px 8px;
+  border: 1px solid var(--hb-rule);
+  background: transparent;
+  color: var(--hb-fg-muted);
+  cursor: pointer;
+}
+.tabs button:hover { color: var(--hb-fg); }
+.tabs button.act {
+  background: var(--hb-pink);
+  border-color: var(--hb-pink);
+  color: var(--hb-on-pink, #fff);
+}
+
 /* A one word action that belongs on the same line as the control it acts on, so it
  * reads as part of the slider rather than as a separate command. */
 .mini {

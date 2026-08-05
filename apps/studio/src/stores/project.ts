@@ -37,7 +37,7 @@ import { useMachine } from "./machine";
 import { useLog } from "./log";
 
 export type SourceKind =
-  | "text" | "svg" | "image" | "sketch"
+  | "text" | "svg" | "image" | "sketch" | "direct"
   | "cube" | "tesseract" | "ico" | "knot" | "sphere" | "lissajous"
   | "circle" | "star" | "spiral" | "grid"
   | "lash" | "ruler" | "square" | "ramp";
@@ -263,6 +263,14 @@ export const useProject = defineStore("project", () => {
           widthMm: min * (scalePct.value / 100),
           heightMm: min * (scalePct.value / 100),
         });
+      case "direct":
+        /*
+         * Direct is a live mode, not a source. Nothing is generated and nothing is
+         * planned: the beam follows the pointer and whatever it draws exists only on
+         * the target. It is listed with the sources because that is where you go to
+         * choose what the machine is doing, and it is genuinely a way of drawing.
+         */
+        return { strokes: [], bbox: { minX: 0, minY: 0, maxX: -1, maxY: -1 } };
       case "sketch":
         return { strokes: sketch.value.map((s) => s.slice()), bbox: { minX: 0, minY: 0, maxX: -1, maxY: -1 } };
       case "lash": return lashGauge(field);
@@ -311,7 +319,7 @@ export const useProject = defineStore("project", () => {
   function place(input: Stroke[]): Point[][] {
     /* Patterns and sketches are already in target millimetres, so centring and
      * scaling them would move a calibration pattern off the thing it is measuring. */
-    const isPattern = ["lash", "ruler", "square", "ramp", "sketch"].includes(source.value);
+    const isPattern = ["lash", "ruler", "square", "ramp", "sketch", "direct"].includes(source.value);
     let out = input.map((s) => s.map((p) => ({ x: p.x, y: p.y })));
 
     /*
@@ -372,11 +380,30 @@ export const useProject = defineStore("project", () => {
 
       const p = machine.profile;
       if (!p || placed.length === 0) {
+        /*
+         * Everything derived, not just the plan. Direct mode reaches here on every
+         * rebuild because it generates nothing, and leaving the readouts behind
+         * meant the status bar still reported the strokes, accuracy and warnings of
+         * whatever was last planned while the beam was being driven by hand. A stale
+         * number next to a live beam is worse than no number.
+         */
         timeline.value = null;
         sim.value = null;
         simulated.value = [];
         planned.value = false;
         commandCount.value = 0;
+        wire.value = [];
+        wireWorstMm.value = 0;
+        wireMerged.value = 0;
+        spreadMm.value = 0;
+        accuracyMm.value = 0;
+        clipped.value = false;
+        detailWarning.value = null;
+        estimate.value = "";
+        health.value =
+          source.value === "direct"
+            ? "direct control: the beam follows the pointer, nothing is planned"
+            : "";
         return;
       }
 

@@ -124,6 +124,29 @@ async function estop() {
   const { emergencyStop } = await import("./session");
   await emergencyStop();
 }
+
+/*
+ * Pointer to beam.
+ *
+ * In direct mode the canvas drives the machine and nothing else: no sketch is
+ * accumulated and no replan is triggered. Every other source keeps the sketching
+ * behaviour, so the one canvas serves both without a mode flag reaching into it.
+ *
+ * Deliberately fire and forget. A drag emits points faster than a board can answer,
+ * and awaiting each one would queue a backlog that keeps moving the beam long after
+ * the pointer has stopped.
+ */
+async function onCanvasAim(p: Point) {
+  if (project.source !== "direct") return project.onAim(p);
+  const { aimAt } = await import("./session");
+  void aimAt(p);
+}
+
+async function onCanvasDraw(p: Point) {
+  if (project.source !== "direct") return project.onDraw(p);
+  const { aimAt } = await import("./session");
+  void aimAt(p);
+}
 </script>
 
 <template>
@@ -200,8 +223,8 @@ async function estop() {
             :show-lattice="project.showLattice"
             :show-ideal="project.showIdeal"
             :clipped="project.clipped"
-            @aim="project.onAim"
-            @draw="project.onDraw"
+            @aim="onCanvasAim"
+            @draw="onCanvasDraw"
             @draw-end="project.onDrawEnd"
           />
 

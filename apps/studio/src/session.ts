@@ -10,7 +10,7 @@
  * out, checking what the machine will really draw) needs no hardware at all.
  */
 
-import { SERVO_PRESETS } from "@virgilvox/beam-core";
+import { SERVO_PRESETS, type Point } from "@virgilvox/beam-core";
 import { useLink } from "./stores/link";
 import { useMachine } from "./stores/machine";
 import { useJob } from "./stores/job";
@@ -178,6 +178,40 @@ export async function jog(da: number, db: number): Promise<void> {
     return;
   }
   await call("jog", da, db);
+  void link;
+}
+
+/**
+ * Point the beam at a place on the target, now.
+ *
+ * The one path that does not go through the planner. Direct control is worth
+ * having as its own mode rather than as a debug affordance, because on a rig whose
+ * error is a fixed fraction of a millimetre it is genuinely the most accurate way
+ * to draw: your eye closes the loop the machine cannot close for itself, and you
+ * correct as you go instead of committing a plan and watching it miss.
+ *
+ * Position goes out absolute rather than as a jog. A jog accumulates whatever the
+ * board did not quite manage, so dragging for a minute walks the two frames apart
+ * and the beam ends up somewhere the pointer is not.
+ */
+export async function aimAt(p: Point): Promise<void> {
+  const { machine, link } = stores();
+  const profile = machine.profile;
+  if (!profile) return;
+
+  const next = profile.quantise(profile.inverse(p, machine.activeCal));
+  if (machine.limitsOn) {
+    next.a = Math.min(machine.limits.maxA, Math.max(machine.limits.minA, next.a));
+    next.b = Math.min(machine.limits.maxB, Math.max(machine.limits.minB, next.b));
+  }
+  machine.axis = next;
+  if (sim()) return;
+  /*
+   * Deliberately not logged. A drag is hundreds of points a second and every one
+   * of them would be a console line, which drowns the log that a live beam is the
+   * reason you are watching.
+   */
+  await call("moveTo", next.a, next.b);
   void link;
 }
 
