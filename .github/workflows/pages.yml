@@ -1,0 +1,86 @@
+name: pages
+
+# The hosted copy is the SAME artifact you would download: one self contained HTML
+# file with everything inlined. There is no separate web build to keep in step,
+# which is the point. BEAM_MULTI exists for an ordinary split bundle and is
+# deliberately not used here.
+#
+# HTTPS matters beyond the padlock. Web Serial and Web Bluetooth only exist in a
+# secure context, so a page served over plain http cannot talk to either board at
+# all. Pages is https, so the hosted app drives real hardware exactly as the
+# downloaded file does.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Read the repo, mint an id token for the deploy, and write Pages. Nothing else.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Never let two deploys race. Queue rather than cancel: a half deployed site is
+# worse than a slightly stale one, and these builds take about a minute.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # Deploying something that does not pass its own checks is how a broken
+      # build becomes the thing people find. ci.yml runs the full suite on the
+      # same push; this is the subset that would actually break the page.
+      - name: typecheck and build packages
+        run: pnpm typecheck
+
+      - name: unit tests
+        run: pnpm test
+
+      - name: build the single file app
+        run: pnpm --filter "./apps/*" build
+
+      # The single file build inlines every asset, so there are no relative asset
+      # URLs and the project subpath needs no `base`. Assert it rather than assume
+      # it: a stray absolute reference would 404 only once deployed, where nobody
+      # is watching the console.
+      - name: no absolute asset references
+        run: |
+          if grep -qE '(src|href)="/[^/]' apps/studio/dist/index.html; then
+            echo "absolute asset reference found; a project page serves from a subpath"
+            grep -oE '(src|href)="/[^"]*"' apps/studio/dist/index.html | sort -u
+            exit 1
+          fi
+          echo "clean: everything is inlined"
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: apps/studio/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

@@ -38,7 +38,7 @@ function replan() {
 
 watch(
   () => [
-    p.source, p.text, p.capMm, p.tracking, p.scalePct, p.toleranceMm,
+    p.source, p.text, p.capMm, p.face, p.tracking, p.scalePct, p.toleranceMm,
     p.rotateDeg, p.offX, p.offY, p.mirrorX, p.mirrorY,
     p.reorder, p.unidirectional, p.yaw, p.pitch, p.detail,
     p.imgThreshold, p.imgPitchSteps, p.imgInvert,
@@ -138,6 +138,19 @@ function toggleGrp(id: string) {
         <template v-if="p.source === 'text'">
           <textarea v-model="p.text" rows="2"></textarea>
           <label class="hb-row">cap height<input v-model.number="p.capMm" type="number" step="1" /><span class="unit">mm</span></label>
+          <label class="hb-row">
+            face
+            <select v-model="p.face">
+              <option value="servo">condensed</option>
+              <option value="default">regular</option>
+            </select>
+          </label>
+          <p class="hb-note">
+            Cap height is millimetres on the target, so the text is as big as you ask and the size
+            slider below does not apply to it. The condensed face is narrower, which is what lets a
+            line fit at a bigger cap height: on a machine that misses by a fixed number of
+            millimetres, bigger letters are the only thing that makes the miss matter less.
+          </p>
           <label class="hb-row">tracking<input v-model.number="p.tracking" type="number" step="0.05" /></label>
         </template>
 
@@ -180,7 +193,10 @@ function toggleGrp(id: string) {
           </p>
         </template>
 
-        <label v-if="!p.isPatternSource" class="hb-row">
+        <!-- Not shown for text: text has a real size and cap height is it. Leaving a
+             second size control on screen is how the two ended up fighting, with the
+             percentage silently winning and the millimetre field doing nothing. -->
+        <label v-if="!p.isPatternSource && p.source !== 'text'" class="hb-row">
           size<input v-model.number="p.scalePct" type="range" min="10" max="100" /><b>{{ p.scalePct }}%</b>
         </label>
         <label class="hb-row">

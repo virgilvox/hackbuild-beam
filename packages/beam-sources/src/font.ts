@@ -27,6 +27,7 @@
 import type { Point } from "@virgilvox/beam-core";
 import type { SourceResult, Stroke } from "./index.js";
 import { bboxOf } from "./ops.js";
+import { SERVO_GLYPHS, SERVO_METRICS } from "./font-servo.js";
 
 export interface GlyphDef {
   /** Advance width in font units, before tracking. */
@@ -228,11 +229,18 @@ const PATH_TOKENS = /[MLQ]|-?\d*\.?\d+/g;
  * font units. Returns null for a character the font does not have, which is what the
  * tofu box in `textToStrokes` keys off.
  */
-export function glyphStrokes(ch: string, tol: number): Stroke[] | null {
-  const key = `${ch}|${tol.toFixed(4)}`;
+export function glyphStrokes(
+  ch: string,
+  tol: number,
+  glyphs: Readonly<Record<string, GlyphDef>> = GLYPHS,
+): Stroke[] | null {
+  /* The face is part of the cache key. Two faces share glyph names by definition,
+   * so keying on the character alone hands the servo face's B back for the default
+   * face's B, which shows up as one letter in the wrong proportions. */
+  const key = `${glyphs === GLYPHS ? "d" : "s"}|${ch}|${tol.toFixed(4)}`;
   const hit = GLYPH_CACHE.get(key);
   if (hit) return hit;
-  const def = GLYPHS[ch];
+  const def = glyphs[ch];
   if (!def) return null;
 
   const toks = def.d.match(PATH_TOKENS) ?? [];
@@ -296,6 +304,14 @@ export interface TextOptions {
    * commandable positions and the letter is no fatter for twice the work.
    */
   resolutionMm?: number;
+  /**
+   * Which face to cut the text from.
+   *
+   * "servo" is condensed, and condensed is not a style preference on a machine with
+   * a fixed absolute error: a narrower line fits at a larger cap height, and cap
+   * height is the denominator that error is divided by. See font-servo.ts.
+   */
+  face?: "default" | "servo";
 }
 
 /* Weight gap bounds, millimetres. Below 0.35 the passes are inside a typical beam
@@ -316,12 +332,15 @@ function clamp(v: number, lo: number, hi: number): number {
  * consistent one, so a missing lower case letter falls back to its capital and vice
  * versa before it falls back to tofu.
  */
-function resolveGlyph(chRaw: string): string | null {
-  if (GLYPHS[chRaw]) return chRaw;
+function resolveGlyph(
+  chRaw: string,
+  glyphs: Readonly<Record<string, GlyphDef>> = GLYPHS,
+): string | null {
+  if (glyphs[chRaw]) return chRaw;
   const up = chRaw.toUpperCase();
-  if (GLYPHS[up]) return up;
+  if (glyphs[up]) return up;
   const lo = chRaw.toLowerCase();
-  if (GLYPHS[lo]) return lo;
+  if (glyphs[lo]) return lo;
   return null;
 }
 
@@ -336,8 +355,11 @@ export function textToStrokes(text: string, opts: TextOptions = {}): SourceResul
   const weight = Math.max(1, Math.round(opts.weight ?? 1));
   const resolutionMm = opts.resolutionMm ?? 1;
 
-  const sc = capMm / FONT_METRICS.cap;
-  const lineStep = (FONT_METRICS.cap - FONT_METRICS.descender + FONT_METRICS.lineGap) * sc;
+  const glyphs = opts.face === "servo" ? SERVO_GLYPHS : GLYPHS;
+  const metrics = opts.face === "servo" ? SERVO_METRICS : FONT_METRICS;
+
+  const sc = capMm / metrics.cap;
+  const lineStep = (metrics.cap - metrics.descender + metrics.lineGap) * sc;
   /* The tolerance arrives in millimetres on the target and the flattener works in
    * font units, so it is divided by the scale rather than used directly. This is the
    * whole reason a 200 mm letter gets more points than a 10 mm one. */
@@ -351,10 +373,10 @@ export function textToStrokes(text: string, opts: TextOptions = {}): SourceResul
     let penX = 0;
     for (const chRaw of line) {
       if (chRaw === " ") {
-        penX += FONT_METRICS.spaceAdvance * tracking;
+        penX += metrics.spaceAdvance * tracking;
         continue;
       }
-      const ch = resolveGlyph(chRaw);
+      const ch = resolveGlyph(chRaw, glyphs);
       if (ch === null) {
         /* A box, so a glyph the font lacks is obvious on the wall rather than absent.
          * Silently skipping it is how a missing character becomes a spacing bug
@@ -365,16 +387,16 @@ export function textToStrokes(text: string, opts: TextOptions = {}): SourceResul
           [
             [x0, 0],
             [x1, 0],
-            [x1, FONT_METRICS.cap],
-            [x0, FONT_METRICS.cap],
+            [x1, metrics.cap],
+            [x0, metrics.cap],
             [x0, 0],
           ].map(([x, y]) => ({ x: x! * sc, y: baseY + y! * sc })),
         );
         penX += TOFU_ADVANCE * tracking;
         continue;
       }
-      const def = GLYPHS[ch]!;
-      const subs = glyphStrokes(ch, tol);
+      const def = glyphs[ch]!;
+      const subs = glyphStrokes(ch, tol, glyphs);
       if (subs) {
         for (const gs of subs) {
           strokes.push(gs.map((p) => ({ x: (penX + p.x) * sc, y: baseY + p.y * sc })));

@@ -3,12 +3,15 @@ import { computed, ref, shallowRef } from "vue";
 import {
   build3d,
   buildShape,
+  bboxCentre,
+  bboxOf,
   centerFit,
   lashGauge,
   rasterToStrokes,
   rateRamp,
   ruler,
   scaleToField,
+  translateStrokes,
   squareWithDiagonals,
   svgToStrokes,
   textToStrokes,
@@ -68,6 +71,16 @@ export const useProject = defineStore("project", () => {
   const source = ref<SourceKind>("text");
   const text = ref("HACK.BUILD");
   const capMm = ref(40);
+  /*
+   * Which face the text is cut from.
+   *
+   * "servo" is condensed and defaults on, because on a machine whose error is a
+   * fixed number of millimetres the narrower face is simply better: the same line
+   * of text fits at about 38 percent more cap height, and the error as a fraction
+   * of a letter falls by about a quarter. It is a legibility setting wearing a
+   * typography setting's clothes. See packages/beam-sources/src/font-servo.ts.
+   */
+  const face = ref<"default" | "servo">("servo");
   const tracking = ref(1);
   const scalePct = ref(72);
   const toleranceMm = ref(0.2);
@@ -170,6 +183,7 @@ export const useProject = defineStore("project", () => {
           capMm: capMm.value,
           tracking: tracking.value,
           toleranceMm: toleranceMm.value,
+          face: face.value,
         });
       case "svg":
         if (!svgText.value) return { strokes: [], bbox: { minX: 0, minY: 0, maxX: -1, maxY: -1 } };
@@ -235,7 +249,25 @@ export const useProject = defineStore("project", () => {
     const isPattern = ["lash", "ruler", "square", "ramp", "sketch"].includes(source.value);
     let out = input.map((s) => s.map((p) => ({ x: p.x, y: p.y })));
 
-    if (!isPattern) {
+    /*
+     * Text already has a real size, so it is centred and NOT rescaled.
+     *
+     * `centerFit` normalises to a unit box by dividing through the bbox span, and
+     * `scaleToField` then multiplies by the field and a percentage. Run text through
+     * that pair and the cap height is erased on the way: cap 10, 40 and 80 all came
+     * out at exactly the same 86.4 x 12.9 mm, because the only two numbers left in
+     * the result were the field and the slider. A control labelled in millimetres on
+     * the target has to mean millimetres on the target.
+     *
+     * Fitting to the field is still the only sensible control for a source with no
+     * intrinsic size, so SVG and images keep it. The panel shows one size control
+     * per source for that reason.
+     */
+    if (source.value === "text") {
+      const b = bboxOf(out);
+      const c = bboxCentre(b);
+      out = translateStrokes(out, -c.x, -c.y);
+    } else if (!isPattern) {
       out = scaleToField(centerFit(out), Math.min(machine.fieldW, machine.fieldH), scalePct.value);
     }
 
@@ -365,6 +397,29 @@ export const useProject = defineStore("project", () => {
         : Math.min(drawnW, drawnH);
       const featureSteps = featureMm / Math.max(1e-9, budget.effectiveMm);
 
+      /*
+       * Overflow first, because it outranks everything else.
+       *
+       * Cap height is millimetres on the target and is now honoured literally, so
+       * asking for letters bigger than the field is a thing you can do. The beam
+       * then runs to the edge of its travel where the geometry goes nonlinear and
+       * the drawing is ruined in a way no other warning describes. Say so, and say
+       * what would fit, because the arithmetic is not obvious: a line of text is
+       * several times as wide as it is tall.
+       */
+      const overW = drawnW / Math.max(1e-9, machine.fieldW);
+      const overH = drawnH / Math.max(1e-9, machine.fieldH);
+      const over = Math.max(overW, overH);
+      if (over > 1.001) {
+        const fits = capMm.value / over;
+        detailWarning.value =
+          `Too big for the field. This is ${drawnW.toFixed(0)} by ${drawnH.toFixed(0)} mm ` +
+          `on a ${machine.fieldW.toFixed(0)} by ${machine.fieldH.toFixed(0)} mm target, so the ` +
+          `beam runs past the edge of its travel and the drawing will not survive it. ` +
+          (source.value === "text"
+            ? `A cap height of about ${fits.toFixed(0)} mm fits, or use fewer characters.`
+            : `Scale it to about ${(100 / over).toFixed(0)} percent.`);
+      } else
       /* Eight is the rough floor for a shape to read at all. Below it no amount of
        * planning helps, because the machine cannot place the ink. */
       detailWarning.value =
@@ -442,7 +497,7 @@ export const useProject = defineStore("project", () => {
   );
 
   return {
-    source, text, capMm, tracking, scalePct, toleranceMm,
+    source, text, capMm, face, tracking, scalePct, toleranceMm,
     rotateDeg, offX, offY, mirrorX, mirrorY,
     reorder, unidirectional, showIdeal, showLattice,
     yaw, pitch, detail, spin,
