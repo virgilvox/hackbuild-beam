@@ -167,6 +167,52 @@ export const useProject = defineStore("project", () => {
   const stepsAcross = ref(0);
   const detailWarning = ref<string | null>(null);
 
+  /**
+   * The largest cap height whose line still fits the field.
+   *
+   * Text width scales linearly with cap height, so one probe at a reference size
+   * fixes the ratio for every size. Both axes are checked because a short string at
+   * a big cap is limited by its height and a long one by its width, and which of
+   * the two binds is not something the operator should have to work out: a line of
+   * text is several times as wide as it is tall, so the answer is usually width and
+   * is never obviously so.
+   */
+  const capToFitMm = computed(() => {
+    if (source.value !== "text") return 0;
+    const probe = textToStrokes(text.value, {
+      capMm: 100,
+      tracking: tracking.value,
+      /* Coarse on purpose: this measures an envelope, and flattening it finely is
+       * work thrown away on every keystroke. */
+      toleranceMm: 2,
+      face: face.value,
+    });
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    for (const st of probe.strokes) {
+      for (const q of st) {
+        if (q.x < minX) minX = q.x;
+        if (q.x > maxX) maxX = q.x;
+        if (q.y < minY) minY = q.y;
+        if (q.y > maxY) maxY = q.y;
+      }
+    }
+    if (!(maxX > minX) && !(maxY > minY)) return 0;
+    const perCapW = (maxX - minX) / 100;
+    const perCapH = (maxY - minY) / 100;
+    /* Eight percent back from the edge. The corners are where a four corner map is
+     * least trustworthy and where a servo is nearest the end of its travel. */
+    const fit = Math.min(
+      perCapW > 1e-6 ? (machine.fieldW * 0.92) / perCapW : Infinity,
+      perCapH > 1e-6 ? (machine.fieldH * 0.92) / perCapH : Infinity,
+    );
+    return Number.isFinite(fit) ? Math.max(2, Math.round(fit)) : 0;
+  });
+
+  /** Set the text as large as the field will take. */
+  function fitTextToField(): void {
+    if (capToFitMm.value > 0) capMm.value = capToFitMm.value;
+  }
+
   const noReorder = ref(false);
 
   /** The DOM primitive the SVG importer needs, injected rather than reached for. */
@@ -498,6 +544,7 @@ export const useProject = defineStore("project", () => {
 
   return {
     source, text, capMm, face, tracking, scalePct, toleranceMm,
+    capToFitMm, fitTextToField,
     rotateDeg, offX, offY, mirrorX, mirrorY,
     reorder, unidirectional, showIdeal, showLattice,
     yaw, pitch, detail, spin,

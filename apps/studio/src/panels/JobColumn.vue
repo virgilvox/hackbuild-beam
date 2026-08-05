@@ -138,6 +138,22 @@ function toggleGrp(id: string) {
         <template v-if="p.source === 'text'">
           <textarea v-model="p.text" rows="2"></textarea>
           <label class="hb-row">cap height<input v-model.number="p.capMm" type="number" step="1" /><span class="unit">mm</span></label>
+          <!-- The slider drives the cap height itself rather than a second scale
+               factor, so there is still only one number that decides the size and it
+               is the one on screen in millimetres. The top of its travel is the
+               largest cap that fits, which makes dragging it to the end mean "fill
+               the field" without needing a separate control that says so. -->
+          <label class="hb-row">
+            size
+            <input
+              v-model.number="p.capMm"
+              type="range"
+              min="4"
+              :max="Math.max(8, p.capToFitMm)"
+              step="1"
+            />
+            <button class="mini" type="button" @click="p.fitTextToField()">fit</button>
+          </label>
           <label class="hb-row">
             face
             <select v-model="p.face">
@@ -146,9 +162,10 @@ function toggleGrp(id: string) {
             </select>
           </label>
           <p class="hb-note">
-            Cap height is millimetres on the target, so the text is as big as you ask and the size
-            slider below does not apply to it. The condensed face is narrower, which is what lets a
-            line fit at a bigger cap height: on a machine that misses by a fixed number of
+            Cap height is millimetres on the target, so the text comes out exactly as big as you
+            ask. The slider is the same number: its top is the largest cap that still fits, which
+            here is {{ p.capToFitMm }} mm. The condensed face is narrower, and narrower is what
+            lets a line fit at a bigger cap height: on a machine that misses by a fixed number of
             millimetres, bigger letters are the only thing that makes the miss matter less.
           </p>
           <label class="hb-row">tracking<input v-model.number="p.tracking" type="number" step="0.05" /></label>
@@ -196,6 +213,9 @@ function toggleGrp(id: string) {
         <!-- Not shown for text: text has a real size and cap height is it. Leaving a
              second size control on screen is how the two ended up fighting, with the
              percentage silently winning and the millimetre field doing nothing. -->
+        <!-- Text has its own size control above, in millimetres. A percentage of the
+             field on top of it would be a second number deciding one thing, which is
+             how the cap height came to be silently ignored in the first place. -->
         <label v-if="!p.isPatternSource && p.source !== 'text'" class="hb-row">
           size<input v-model.number="p.scalePct" type="range" min="10" max="100" /><b>{{ p.scalePct }}%</b>
         </label>
@@ -259,6 +279,21 @@ function toggleGrp(id: string) {
 </template>
 
 <style scoped>
+/* A one word action that belongs on the same line as the control it acts on, so it
+ * reads as part of the slider rather than as a separate command. */
+.mini {
+  font-family: var(--hb-mono);
+  font-size: 10px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border: 1px solid var(--hb-rule);
+  background: transparent;
+  color: var(--hb-fg-muted);
+  cursor: pointer;
+}
+.mini:hover { color: var(--hb-fg); border-color: var(--hb-fg-muted); }
+
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
 .hb-grp.focus { box-shadow: inset 0 0 0 2px var(--hb-pink); }
 .hb-row input[type=range] { flex: 1; min-width: 0; }
