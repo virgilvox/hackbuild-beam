@@ -430,7 +430,14 @@ export const useProject = defineStore("project", () => {
       });
       timeline.value = tl;
 
-      const result = simulate(tl, p, { cal });
+      /*
+       * The compensation the wire will carry, so the preview predicts the machine
+       * that will actually draw this rather than an uncompensated one. Both sides
+       * take the same number from the same place for that reason.
+       */
+      const backlash = p.backlashAxis * machine.backlashComp;
+
+      const result = simulate(tl, p, { cal, backlash });
       sim.value = result;
       spreadMm.value = result.spreadMm;
 
@@ -569,6 +576,7 @@ export const useProject = defineStore("project", () => {
          * assumes the good path so the preview shows what a modern board will do. */
         hermite: wireCaps()?.herm ?? true,
         tolMm: Math.min(toleranceMm.value, 0.08),
+        backlash,
       });
       wire.value = em.segments;
       wireWorstMm.value = em.worstMm;

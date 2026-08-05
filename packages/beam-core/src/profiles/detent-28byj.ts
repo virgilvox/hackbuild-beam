@@ -105,6 +105,13 @@ export function createDetent28byj(cfg: Partial<DetentConfig> = {}): MachineProfi
 
   return {
     id: "detent-28byj",
+    /*
+     * None. A stepper's error is gear backlash, which is real slack in the train
+     * rather than a controller dead zone, and the board already compensates it with
+     * its own lash figures measured per axis. Adding a second correction on top
+     * would double count the same millimetres.
+     */
+    backlashAxis: 0,
     label: "DETENT: two mirror 28BYJ-48 scanner",
     geometry: g,
     beamAnglePerAxisAngle: 2,

@@ -1,5 +1,6 @@
 import type { ActuatorModel, AxisPair, Calibration, MachineProfile, Point } from "../types.js";
 import { sampleAt, type PlanPoint, type Timeline } from "../planner/plan.js";
+import { applyBacklash } from "../planner/backlash.js";
 
 /*
  * Replay a plan through the machine's own error model.
@@ -26,6 +27,12 @@ import { sampleAt, type PlanPoint, type Timeline } from "../planner/plan.js";
  */
 
 export interface SimOptions {
+  /**
+   * Axis units of directional compensation, normally the profile's `backlashAxis`
+   * times whatever strength is configured. See planner/backlash.ts: it is worth
+   * more than every other knob on the servo rig put together.
+   */
+  backlash?: number | undefined;
   /**
    * Seconds per simulation step. The default resolves a 50 Hz servo frame twenty
    * times over, which is enough to see the latch and the deadband without producing
@@ -117,6 +124,42 @@ export function simulate(
     return { samples: [], spreadMm: 0, worstMm: 0, meanMm: 0, dtSec: dt, truncated: false };
   }
 
+  /* Off by default so nothing changes for a caller that has not asked. */
+  const backlashAxis = options.backlash ?? 0;
+
+  /*
+   * Which way each axis is going, measured over a servo frame.
+   *
+   * The obvious version, the sign of the step to the next plan point, is wrong and
+   * quietly so. Plan points are a millisecond apart and an axis creeping through a
+   * shallow curve moves a hundredth of a microsecond between two of them, so the
+   * sign is numerical dust and the compensation flips back and forth: a dither, at
+   * one whole deadband, exactly where the drawing is most delicate.
+   *
+   * A distance threshold per step is no better, because no single step clears it
+   * and the direction then reads as stationary everywhere.
+   *
+   * Twenty milliseconds is the honest window: it is one frame of the thing being
+   * compensated, and over a frame a moving axis has genuinely moved. Time is
+   * monotonic so the lookahead only ever walks forward, which keeps this linear.
+   */
+  const dirA = new Int8Array(plan.length);
+  const dirB = new Int8Array(plan.length);
+  if (backlashAxis > 0) {
+    const WINDOW = 0.02;
+    /* Small enough to catch a slow axis, large enough to reject float dust. */
+    const eps = backlashAxis * 0.02;
+    let k = 0;
+    for (let j = 0; j < plan.length; j++) {
+      if (k < j) k = j;
+      while (k < plan.length - 1 && plan[k]!.t - plan[j]!.t < WINDOW) k++;
+      const da = plan[k]!.axis.a - plan[j]!.axis.a;
+      const db = plan[k]!.axis.b - plan[j]!.axis.b;
+      dirA[j] = Math.abs(da) > eps ? (da > 0 ? 1 : -1) : 0;
+      dirB[j] = Math.abs(db) > eps ? (db > 0 ? 1 : -1) : 0;
+    }
+  }
+
   const actuator: ActuatorModel = profile.actuator();
   const first = plan[0]!;
   actuator.reset(first.axis.a, first.axis.b);
@@ -157,7 +200,13 @@ export function simulate(
       });
     }
 
-    const actual = actuator.step(dt, cmd.a, cmd.b);
+    /*
+     * The same correction the wire carries, applied here so the preview predicts
+     * what the machine will really do rather than what an uncompensated one would.
+     * If these two ever diverge the app is confidently showing the wrong drawing.
+     */
+    const comp = applyBacklash(cmd, dirA[i]!, dirB[i]!, backlashAxis);
+    const actual = actuator.step(dt, comp.a, comp.b);
     const at = profile.forward(actual, cal);
     const ideal = sampleAt(tl, t * tl.options.speed).at;
     samples.push({

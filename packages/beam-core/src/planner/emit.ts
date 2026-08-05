@@ -1,5 +1,6 @@
 import type { AxisPair, Calibration, MachineProfile } from "../types.js";
 import { sampleAt, type Timeline } from "./plan.js";
+import { applyBacklash } from "./backlash.js";
 
 /*
  * Turning a plan into what actually goes on the wire.
@@ -29,6 +30,17 @@ export interface EmitOptions {
   tolMm?: number | undefined;
   /** Live speed override. Scales the timeline, never the wire duration. */
   speed?: number | undefined;
+  /**
+   * Axis units of directional compensation baked into the emitted positions.
+   *
+   * Done here rather than in the firmware so it works against a board that has not
+   * been reflashed, which is most of them. The cost of doing it here is that the
+   * board interpolates between endpoints, so a correction that flips inside a
+   * segment is smoothed across it instead of switching cleanly. In practice a
+   * velocity reversal is a curvature event and the fitter has already split there,
+   * so the endpoints land close to where the flip belongs.
+   */
+  backlash?: number | undefined;
 }
 
 /** One segment as it will go on the wire, in this machine's own axis units. */
@@ -192,6 +204,7 @@ export function emitSegments(
   const herm = options.hermite ?? false;
   const tolMm = options.tolMm ?? 0.05;
   const speed = Math.max(0.05, options.speed ?? 1);
+  const backlash = options.backlash ?? 0;
 
   const spanMaxMs = herm ? SPAN_MAX_MS_HERMITE : SPAN_MAX_MS_LEGACY;
   const mergeMaxMs = herm ? MERGE_MAX_MS_HERMITE : MERGE_MAX_MS_LEGACY;
@@ -261,7 +274,21 @@ export function emitSegments(
     /* The gate a segment carries is the one at its START, and the board holds it for
      * the segment's whole duration. */
     const laser = sampleAt(tl, t).laser;
-    const q = profile.quantise(to);
+    /*
+     * Compensation goes on before quantising, so the correction survives the round
+     * to a commandable value rather than being thrown away by it. Applied from the
+     * ARRIVAL velocity, because the endpoint is where the axis will actually be
+     * when the board lands on this pair.
+     */
+    /*
+     * Direction from the arrival velocity when there is one, and from the chord
+     * otherwise. Legacy segments carry no velocity, so reading the sign off vEnd
+     * alone would silently disable compensation on exactly the older boards that
+     * cannot apply it themselves.
+     */
+    const dirA = herm ? vEnd.a : to.a - from.a;
+    const dirB = herm ? vEnd.b : to.b - from.b;
+    const q = profile.quantise(applyBacklash(to, dirA, dirB, backlash));
     const velA = herm ? quantiseVel(vEnd.a) : 0;
     const velB = herm ? quantiseVel(vEnd.b) : 0;
 

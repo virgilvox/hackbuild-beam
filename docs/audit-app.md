@@ -50,6 +50,46 @@ board's vocabulary must not quietly look like success.
 | APP-1 | high | Washer config push sent an empty `CFG ` line | fixed |
 | APP-2 | high | Detent config push dropped inversions and limit values | fixed |
 
+## Superseded: backlash compensation beats all of this
+
+The table below was measured before the planner cancelled the servo's directional
+bias, and it is left in place because the reasoning still holds and the numbers are
+still what those settings do. But dither is no longer the answer.
+
+A servo deadband is hysteresis, not a grid: the inner loop cuts the motor once the
+error falls inside the band, so an axis stops a whole deadband short of a target it
+approaches from below and a deadband past one it approaches from above. Which of the
+two happens depends only on the direction of travel. That makes the miss a known,
+signed quantity, and a known signed quantity can be subtracted instead of averaged
+away. Machine tools have called this backlash compensation for a century.
+
+Measured through the emitter and the firmware's own interpolator, ninetieth
+percentile geometric error, dither off:
+
+| drawing | none | compensated | |
+| --- | --- | --- | --- |
+| text, cap 23 | 2.47 mm | 0.29 mm | 8.6x |
+| text, cap 58 | 6.56 mm | 0.52 mm | 12.7x |
+| circle r45 | 2.11 mm | 0.19 mm | 11.2x |
+| zigzag | 1.60 mm | 0.16 mm | 10.1x |
+
+In the app, which measures through `simulate` rather than through the wire and is
+therefore conservative: 1.96 mm with nothing, 1.35 with dither and feed, **0.60 with
+compensation and feed**, and 1.47 with all three. The last figure is the important
+one: compensation and dither do not stack. Compensation leaves the command already
+correct and dither then adds noise around a good answer.
+
+Dither also costs a servo that hunts continuously, drawing more current and audible
+across a room. Compensation costs nothing to run.
+
+The two models disagree on the size of the win, 8.6x against 3.1x on the same input,
+and the difference is real rather than noise: the emitter bakes the correction into
+segment endpoints and the board's cubic carries it smoothly, where the simulator
+applies a hard step at each reversal. The wire is what ships, so the wire figure is
+the one to expect on the wall, and the preview under-promises. That is the right way
+round for a preview, but it is a divergence and it is written down here so it is not
+mistaken for a measurement error later.
+
 ## Why washer text plotted badly
 
 Measured end to end: text to strokes, `planJob`, `emitSegments`, the firmware's own

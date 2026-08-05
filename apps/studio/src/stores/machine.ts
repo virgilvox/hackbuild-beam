@@ -85,6 +85,21 @@ export const useMachine = defineStore("machine", () => {
    */
   const servo = ref<string>("micro9g");
 
+  /**
+   * Directional compensation strength, as a fraction of one deadband.
+   *
+   * On by default at full strength, because it is the single largest improvement
+   * available to this machine and it costs nothing to run: measured through the
+   * emitter, a 58 mm cap line goes from 6.56 mm to 0.52 mm and a circle from 2.11
+   * to 0.19. Zero disables it.
+   *
+   * It supersedes dither rather than joining it. Dither is a statistical fix that
+   * adds motion and hopes the mechanics average the bias away, at the cost of a
+   * servo that hunts continuously; this cancels the same bias arithmetically. Run
+   * together they are worse than this alone.
+   */
+  const backlashComp = ref(1);
+
   const leadPanMs = ref(3);
   const leadTiltMs = ref(1.5);
   const feedMmS = ref(0);
@@ -270,7 +285,7 @@ export const useMachine = defineStore("machine", () => {
   return {
     profile, config, adopted, axis, beamOn, queueFree,
     throwMm, sepMm, mountHMm, fieldW, fieldH,
-    invA, invB, invertChecked, dither, servo, leadPanMs, leadTiltMs, feedMmS,
+    invA, invB, invertChecked, dither, servo, backlashComp, leadPanMs, leadTiltMs, feedMmS,
     limitsOn, limitsDerived, limits, persisted, originSet,
     corners, calibration, residualMm, aspect, calibrationOn,
     cornersCaptured, mappingSolved, activeCal, caps, axisUnit,

@@ -144,6 +144,14 @@ export function createWasherServo(cfg: Partial<WasherConfig> = {}): MachineProfi
 
   return {
     id: "washer-servo",
+    /*
+     * A whole deadband, because that is how far the miss actually is. The inner
+     * loop cuts the motor once the error falls inside the band, so an axis coming
+     * up to a target stops a full deadband short of it rather than half. Half was
+     * the intuitive figure and it measures worse: the sweep is monotonic all the
+     * way to 1.0 and turns over after.
+     */
+    backlashAxis: preset.deadband,
     label: "WASHER: servo pan/tilt head",
     geometry: g,
     beamAnglePerAxisAngle: 1,

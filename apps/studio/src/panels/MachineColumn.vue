@@ -212,6 +212,24 @@ function toggleGrp(id: string) {
           </p>
         </template>
 
+        <template v-if="caps?.pulseWindow">
+          <label class="hb-row">
+            backlash comp
+            <input v-model.number="m.backlashComp" type="range" min="0" max="1.5" step="0.05" />
+            <b>{{ (m.backlashComp * 100).toFixed(0) }}%</b>
+          </label>
+          <p class="hb-note">
+            Pushes each axis command a deadband in the direction it is travelling, cancelling the
+            miss instead of averaging it away. A servo stops a whole deadband short of a target it
+            approaches from below and a deadband past one it approaches from above, and which of
+            the two happens depends only on direction, so it can simply be subtracted. This is the
+            largest single improvement available to this rig: on a 58 mm cap line it takes the
+            error from 6.56 mm to 0.52 mm. 100 percent is one deadband and is usually right.
+            <b>It replaces dither rather than joining it</b>: run together they are worse than this
+            alone, and this one does not leave the servos hunting.
+          </p>
+        </template>
+
         <template v-if="caps?.dither">
           <label class="chk"><input v-model="m.dither" type="checkbox" /> dither</label>
           <label class="hb-row">

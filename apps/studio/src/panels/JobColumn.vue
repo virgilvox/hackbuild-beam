@@ -99,6 +99,7 @@ watch(
      * box accepted a number and changed nothing, which is the same shape of bug as
      * the dither checkbox that only moved the estimate. */
     machine.feedMmS,
+    machine.backlashComp,
   ],
   replan,
   { immediate: true },

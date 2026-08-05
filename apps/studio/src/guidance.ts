@@ -224,9 +224,9 @@ const WASHER: MachineGuide = {
     },
     {
       id: "smooth",
-      title: "Turn dither on and bring the feed down",
-      body: "Set dither on and the draw feed to about 40 mm/s. Both, not either: on a 40 mm cap height the ninetieth percentile error goes 5.1 mm as shipped, 5.6 mm with a slow feed alone, 3.5 mm with dither alone, and 1.5 mm with the two together. The job takes about three times as long.",
-      why: "A servo deadband is hysteresis, not a grid. Below some error the motor is simply off, so it stops wherever it got to and slowing down just sits in the dead zone longer, which is why feed alone measures no better than doing nothing. Dither breaks the hysteresis by keeping the motor always driven, but the mechanics need several servo frames to average the carrier out, so it only pays once the beam is crossing well under one deadband per frame. Each half is useless without the other, which is why this is one step and not two.",
+      title: "Leave backlash compensation on and bring the feed down",
+      body: "Compensation is on by default at one deadband and it is the largest single win this rig has: on a fitted line of text it takes the error from 1.96 mm to 0.94 mm on its own, and to 0.60 mm with the draw feed at about 40 mm/s. Leave dither OFF. It solves the same problem a worse way and the two together measure 1.47 mm, worse than compensation alone.",
+      why: "A servo deadband is hysteresis, not a grid. The inner loop cuts the motor once the error falls inside the band, so an axis stops a whole deadband short of a target it comes up to and a deadband past one it comes down to. Which of the two happens depends only on the direction of travel, so the miss is a known signed quantity and can simply be subtracted rather than averaged away. That is what compensation does, and it is what a machine tool has always done about backlash. Dither attacks the same bias statistically, by keeping the motor moving so the mechanics average it out, which works but costs a servo that hunts continuously and lands nowhere near as close.",
       panel: "path",
       done: () => false,
     },
@@ -236,8 +236,8 @@ const WASHER: MachineGuide = {
 
   facts: [
     {
-      title: "What dither actually does",
-      body: "It alternates the command a few microseconds either side of where the planner put it, once per servo frame. Measured against a modelled 9g servo it turns about 0.94 mm of direction-dependent error into roughly 0.35 mm of symmetric wobble. It is off by default because it holds both servos hunting all the time, which means constant buzzing and a lot more current than a servo that has settled.",
+      title: "Why dither is no longer the answer",
+      body: "It alternates the command a few microseconds either side of where the planner put it, once per servo frame, turning direction-dependent error into symmetric wobble. It works, and backlash compensation works better: the bias it is averaging away is deterministic, so cancelling it arithmetically beats hoping the mechanics average it out. Compensation also costs nothing to run, where dither holds both servos hunting all the time, which is constant buzzing and a lot more current than a servo that has settled. Keep dither off unless compensation is off too.",
     },
     {
       title: "Lead straightens diagonals",

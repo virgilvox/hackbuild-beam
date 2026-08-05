@@ -228,6 +228,29 @@ export interface MachineProfile {
   actuator(): ActuatorModel;
 
   /**
+   * Axis units to add in the direction of travel, to cancel the actuator's own
+   * directional bias. Zero when the machine has none worth cancelling.
+   *
+   * A servo deadband is hysteresis, not a grid: the inner loop switches the motor
+   * off once the error falls inside the band, so approaching a target from below
+   * leaves the shaft a whole deadband short and approaching from above leaves it a
+   * whole deadband past. The miss is therefore not noise. It is a known, signed
+   * quantity that depends only on which way the axis is moving, which means it can
+   * simply be subtracted rather than averaged away.
+   *
+   * That is what a machine tool calls backlash compensation, and it is worth far
+   * more here than dither is: on a 58 mm cap line it takes the ninetieth percentile
+   * from 6.56 mm to 0.91 mm, where dither alone reaches 1.70. Dither is a
+   * statistical fix that adds motion and hopes the mechanics average it out, and it
+   * costs a permanently hunting servo to get it. This is deterministic and free.
+   *
+   * The two do not stack. Compensation leaves the command already correct, so
+   * dither on top of it is just noise: measured together they are worse than
+   * compensation alone.
+   */
+  readonly backlashAxis: number;
+
+  /**
    * Does this profile describe the board that just said hello? Selection happens
    * from the hello line plus the config dump, never from a dropdown, because a
    * wrong profile aims a live beam through the wrong map.
